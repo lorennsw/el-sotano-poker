@@ -4,6 +4,9 @@ Póker en el navegador con estética arcade pixel: fondo de plasma pixelado, bot
 un logo que baila y cartas que se inclinan hacia el ratón.
 Dos modalidades, tutorial interactivo y mesas privadas para jugar **online con amigos** (o contra bots).
 
+**▶ Jugar: https://el-sotano-poker.onrender.com** (plan gratuito de Render: si nadie lo ha usado en un rato,
+la primera carga tarda unos segundos en despertar el servidor).
+
 | Modalidad | Cómo se juega |
 | --- | --- |
 | **Póker de 3 Cartas** (principal) | Reglas de casino: cada jugador contra el crupier. Ante, Play y Pair Plus, el crupier califica con Reina alta, Bono Ante y tabla Pair Plus 1-4-6-30-40. |

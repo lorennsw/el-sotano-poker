@@ -848,3 +848,181 @@ body[data-screen='home'] .toast { top: auto; bottom: calc(20px + env(safe-area-i
   :root { --cw-lg: 62px; }
   .table-wrap { padding: 46px 80px 46px; }
 }
+
+/* ------------------------------------------------- aviso: gira el móvil */
+.rotate-hint { display: none; }
+@media (orientation: portrait) and (max-width: 640px) and (pointer: coarse) {
+  body:not(.portrait-ok) .rotate-hint {
+    position: fixed; inset: 0; z-index: 45; display: grid; place-items: center; padding: 20px;
+    background: rgba(4, 10, 10, 0.88);
+  }
+}
+.rotate-box { width: min(360px, 100%); padding: 22px 20px 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.rotate-box h2 { margin: 0; font-size: 36px; color: var(--gold); text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45); }
+.rotate-box p { margin: 0; color: var(--ink-dim); font-size: 18px; line-height: 1.3; }
+.rotate-box .rotate-manual { font-size: 15px; color: var(--ink-mute); }
+.rotate-phone {
+  width: 56px; height: 96px; border-radius: 12px; border: 5px solid var(--ink); background: var(--felt);
+  display: grid; place-items: center; color: var(--ink); font-size: 26px; box-shadow: 0 5px 0 rgba(0, 0, 0, 0.5);
+  animation: turnPhone 2.4s ease-in-out infinite; margin: 14px 0 8px;
+}
+@keyframes turnPhone { 0%, 25% { transform: rotate(0deg); } 50%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
+
+/* ------------------------------------------------ móvil en horizontal */
+/* La mesa ancha a la izquierda y un panel lateral con mis cartas y los mandos, como en el PC. */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root { --plate-w: 108px; --cw-lg: 52px; }
+  body { font-size: 15px; }
+
+  /* Menú en dos columnas */
+  #screen-home { padding: 10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left)); }
+  .menu-wrap { display: grid; grid-template-columns: 1fr 1fr; align-items: center; column-gap: 28px; row-gap: 6px; width: min(860px, 100%); }
+  .logo-block { grid-column: 1; grid-row: 1; }
+  .logo-row { font-size: 19vh; }
+  .logo-row.small { font-size: 9vh; }
+  .logo-sub { margin-top: 10px; font-size: 11px; padding: 4px 10px; letter-spacing: 0.22em; }
+  .fan { grid-column: 1; grid-row: 2; height: 74px; }
+  .fan .card { --cw: 46px; margin: 0 -8px; }
+  .main-menu { grid-column: 2; grid-row: 1 / span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 12px 16px; }
+  .main-menu .mbtn { min-width: 0; font-size: 26px; padding: 12px 8px 10px; }
+  .main-menu .mbtn-play { grid-column: auto; font-size: 30px; min-width: 0; }
+  .fineprint { grid-column: 1 / -1; font-size: 9px; }
+
+  /* Hoja de partida: nombre y botón a la izquierda, juego a la derecha */
+  .setup { padding: 8px; }
+  .setup-box { width: min(780px, 100%); max-height: calc(100dvh - 16px); display: grid; grid-template-columns: 1fr 1.25fr; gap: 10px 16px; padding: 12px 16px 14px; align-content: start; }
+  .setup-head { grid-column: 1 / -1; }
+  .setup-head h2 { font-size: 26px; }
+  .mbtn-back { font-size: 18px; padding: 6px 10px 5px; }
+  .setup-box .field { grid-column: 1; grid-row: 2; }
+  .setup-box .mode-pick { grid-column: 2; grid-row: 2 / span 3; }
+  .setup-box .setup-actions { grid-column: 1; grid-row: 3; }
+  .setup-box .online-note { grid-column: 1; grid-row: 4; font-size: 13px; }
+  .field input { padding: 8px 12px; }
+  .mode-card { padding: 10px; gap: 4px; }
+  .mode-title { font-size: 24px; }
+  .mode-desc { font-size: 14px; }
+  .mbtn-wide { font-size: 24px; padding: 10px; }
+  .join-row input { font-size: 22px; padding: 6px; }
+
+  /* Sala */
+  #screen-lobby { padding: 8px; }
+  .lobby-wrap { grid-template-columns: 1.3fr 1fr; gap: 10px; }
+  .lobby-main { padding: 12px 14px; gap: 6px; }
+  .room-code { font-size: 44px; }
+  .section-title { margin-top: 6px; }
+  .mode-toggle button { padding: 6px 10px; font-size: 18px; }
+  .player-row { padding: 4px 8px; }
+  .player-row .avatar { width: 32px; height: 32px; font-size: 18px; }
+  .lobby-chat { min-height: 0; max-height: calc(100dvh - 16px); }
+
+  /* Mesa */
+  .topbar { padding: 4px max(10px, env(safe-area-inset-right)) 6px max(10px, env(safe-area-inset-left)); }
+  .icon-btn { width: 32px; height: 32px; font-size: 15px; border-radius: 8px; }
+  .tb-mode { font-size: 20px; }
+  .tb-room { font-size: 9px; }
+  .menu { top: 46px; }
+  .table-area { flex-direction: row; }
+  .table-wrap { padding: 30px 64px 32px max(64px, env(safe-area-inset-left)); min-height: 0; }
+  .table { width: min(100cqw, 165cqh); aspect-ratio: 1.65; }
+  .table::before { inset: -14px; }
+  .dock {
+    flex-direction: column; justify-content: center; gap: 6px; min-height: 0; overflow-y: auto;
+    flex: none; width: clamp(250px, 36vw, 330px);
+    padding: 8px max(10px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) 10px;
+    border-top: 0; border-left: 3px solid var(--edge); box-shadow: -4px 0 0 rgba(0, 0, 0, 0.35);
+  }
+  .dock-hand { min-width: 0; gap: 2px; }
+  .my-cards { min-height: calc(var(--cw-lg) * 1.4); gap: 4px; }
+  body[data-mode='draw'] { --cw-lg: 46px; }
+  body[data-mode='draw'] .my-cards { gap: 0; }
+  body[data-mode='draw'] .my-cards .card + .card { margin-left: -4px; }
+  .my-cards .card.selected .card-front::after { font-size: 7.5px; letter-spacing: 0; padding: 2px 0; }
+  .my-cards .card.selected { translate: 0 -12px; }
+  .my-hand-name { font-size: 18px; min-height: 22px; }
+  .dock-controls { min-width: 0; width: 100%; gap: 6px; }
+  .ctl-msg { font-size: 19px; }
+  .ctl-sub, .ctl-note { font-size: 14px; min-height: 0; }
+  .ctl-timer { min-height: 0; }
+  .ctl-row { gap: 6px; }
+  .chip-rack { gap: 8px; }
+  .chip-btn { width: 44px; height: 44px; }
+  .chip-btn span { font-size: 15px; }
+  .btn { padding: 8px 12px; font-size: 18px; }
+  .btn small { font-size: 12px; }
+  .btn-deal { min-width: 0; flex: 1; font-size: 21px; }
+  .ctl-row.decide .btn { font-size: 20px; padding: 9px 6px; }
+  .advice { font-size: 14px; padding: 4px 8px; }
+  .targets button { padding: 4px 6px; font-size: 10px; }
+  .targets button b { font-size: 17px; }
+  .raise-box { padding: 6px; gap: 5px; }
+  .raise-line { flex-wrap: wrap; }
+  .raise-line input { flex: 1 1 100%; }
+  .raise-line .btn { min-width: 0; flex: 1 1 100%; }
+  .raise-quick button { padding: 4px 2px; font-size: 14px; }
+  .result-lines { font-size: 14px; }
+  .dock-controls.result .result-head { font-size: 24px; }
+
+  /* Asientos */
+  .plate { padding: 3px 6px 3px 3px; gap: 5px; border-width: 2px; }
+  .plate .avatar { width: 28px; height: 28px; font-size: 16px; border-radius: 7px; }
+  .pname, .pchips { font-size: 15px; }
+  .seat-status { top: 18px; font-size: 9px; padding: 1px 5px; }
+  .seat.pos-top .seat-stack { top: 36px; }
+  .seat.pos-bottom .seat-stack { bottom: 24px; }
+  .seat.pos-left .seat-stack, .seat.pos-right .seat-stack { top: -20px; }
+  .card-sm { --cw: 30px; }
+  .card-md { --cw: 40px; }
+  .seat-cards { gap: 0; }
+  /* Cartas de los rivales en formato índice: valor y palo, muy juntas */
+  .seat-cards .card { font-size: calc(var(--cw) * 0.52); }
+  .seat-cards .card .pips, .seat-cards .card .figure, .seat-cards .card .ace, .seat-cards .card .corner.br { display: none; }
+  .seat-cards .card .corner.tl { top: 8%; left: 7%; right: auto; }
+  .seat-cards .card .card-front::before { display: none; }
+  .seat-cards .card .back-medal { width: 82%; }
+  .seat-cards .card + .card { margin-left: calc(var(--cw) * -0.56); }
+  .mode-draw .seat.pos-left.pos-bottom .seat-stack, .mode-draw .seat.pos-right.pos-bottom .seat-stack { top: auto; bottom: -20px; flex-direction: column-reverse; }
+  .seat-hand { font-size: 13px; padding: 1px 6px; }
+  .seat-hand .long { display: none; }
+  .seat-hand .short { display: inline; }
+  .mode-three .seat:not(.is-me) .seat-cards, .mode-three .seat:not(.is-me) .seat-bet { display: none; }
+  .seat-pop { font-size: 18px; }
+
+  /* Tapete */
+  .felt-arc { display: none; }
+  .felt-paytable { top: 46%; width: 60%; font-size: 11px; line-height: 1.35; }
+  .mode-draw .felt-paytable { display: none; }
+  .dealer-zone { top: 4%; gap: 2px; }
+  .dealer-label { font-size: 9px; }
+  .dealer-hand { font-size: 14px; min-height: 18px; }
+  .dealer-hand em { font-size: 8.5px; }
+  .shoe { right: 17%; top: 8%; width: 40px; height: 30px; }
+  .shoe::after { width: 20px; height: 17px; }
+  .bet-spots { bottom: 8%; gap: 10px; }
+  .spot { --s: 46px; }
+  .spot-pp { --s: 42px; }
+  .spot-name { font-size: 8px; }
+  .pot-zone { width: 40%; gap: 2px; }
+  .pot-chips { min-height: 26px; }
+  .phase-label { font-size: 9px; letter-spacing: 0.08em; }
+  .pot-amount { font-size: 21px; min-height: 22px; }
+  .pot-result { display: none; } /* el ganador ya sale en el panel lateral */
+  .mode-draw .pot-zone { top: 48%; width: 28%; }
+  .mode-draw .phase-label { display: none; } /* el panel lateral ya dice qué toca */
+  /* El rival de arriba lleva sus cartas a la derecha de su placa, sobre el borde */
+  .mode-draw .seat.pos-top:not(.pos-left):not(.pos-right) .seat-stack { top: -20px; left: calc(var(--plate-w) / 2 + 6px); transform: none; align-items: flex-start; }
+  .stack { width: 20px; height: calc(20px + (var(--n, 1) - 1) * 3px); }
+  .chip { width: 20px; height: 20px; bottom: calc(var(--i) * 3px); }
+  .drawer { width: min(340px, 60vw); }
+
+  /* Tutorial y diálogos */
+  .modal { padding: 8px; }
+  .modal-box { max-height: calc(100dvh - 16px); }
+  .modal-head { padding: 8px 12px 6px 16px; }
+  .modal-head h2 { font-size: 22px; }
+  .tut-tabs { padding-bottom: 8px; }
+  .tut-body { padding: 10px 16px; }
+  .tut-slide h3 { font-size: 24px; margin-bottom: 8px; }
+  .tut-foot { padding: 8px 12px 10px; }
+  .toast { top: 52px; }
+}

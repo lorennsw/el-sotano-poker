@@ -330,7 +330,26 @@ async function leave() {
   showScreen('home');
 }
 
+// ------------------------------------------------------- móvil en horizontal
+
+const isTouchPhone = () => matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) <= 600;
+const canLockLandscape = () => !!(document.documentElement.requestFullscreen && screen.orientation && screen.orientation.lock);
+
+/**
+ * En el móvil intenta pantalla completa + horizontal (Android). Debe llamarse desde un toque.
+ * iPhone no lo permite desde una web: allí queda el aviso para girarlo a mano.
+ */
+function goLandscape() {
+  if (!isTouchPhone() || !canLockLandscape()) return Promise.resolve(false);
+  const lock = () => screen.orientation.lock('landscape').then(() => true, () => false);
+  if (document.fullscreenElement) return lock();
+  return document.documentElement
+    .requestFullscreen({ navigationUI: 'hide' })
+    .then(lock, () => false);
+}
+
 function startSolo(mode = S.mode) {
+  goLandscape();
   if (S.transport) S.transport.close();
   resetTableUI();
   S.transport = new LocalTransport(playerName(), mode, handlers);
@@ -341,6 +360,7 @@ function startOnline(first) {
     toast('El modo online necesita el servidor de El Sótano en marcha.', 'error', 4000);
     return;
   }
+  goLandscape();
   if (S.transport) S.transport.close();
   session.set(null);
   resetTableUI();
@@ -572,11 +592,18 @@ const SEAT_ANGLES_NARROW = {
   three: [90, 160, 195, 215, 325, 20],
   draw: [90, 160, 205, 270, 335, 20],
 };
+// Móvil en horizontal: en 5 cartas las sillas laterales van a media altura para separar sus filas.
+const SEAT_ANGLES_LANDSCAPE = {
+  three: SEAT_ANGLES.three,
+  draw: [90, 155, 205, 270, 335, 25],
+};
 const narrow = matchMedia('(max-width: 640px)');
+const landscapePhone = matchMedia('(orientation: landscape) and (max-height: 500px)');
 function seatAngle(mode, rel) {
-  return (narrow.matches ? SEAT_ANGLES_NARROW : SEAT_ANGLES)[mode][rel];
+  const set = narrow.matches ? SEAT_ANGLES_NARROW : landscapePhone.matches ? SEAT_ANGLES_LANDSCAPE : SEAT_ANGLES;
+  return set[mode][rel];
 }
-narrow.addEventListener?.('change', () => S.view?.game && renderTable(S.view));
+for (const mq of [narrow, landscapePhone]) mq.addEventListener?.('change', () => S.view?.game && renderTable(S.view));
 
 function buildSeat(p) {
   const el = document.createElement('div');
@@ -1490,6 +1517,17 @@ async function init() {
   setupTilt();
   $$('[data-menu]').forEach((b) => b.addEventListener('click', () => openSetup(b.dataset.menu)));
   $('#setup-back').addEventListener('click', closeSetup);
+  // Aviso de girar el móvil
+  if (!canLockLandscape()) $('#rotate-go').hidden = true;
+  else $('#rotate-manual').hidden = true;
+  $('#rotate-go').addEventListener('click', async () => {
+    const ok = await goLandscape();
+    if (!ok) {
+      $('#rotate-go').hidden = true;
+      $('#rotate-manual').hidden = false;
+    }
+  });
+  $('#rotate-skip').addEventListener('click', () => document.body.classList.add('portrait-ok'));
   $('#setup').addEventListener('click', (e) => e.target.id === 'setup' && closeSetup());
   document.addEventListener('keydown', (e) => e.key === 'Escape' && !$('#setup').hidden && closeSetup());
 

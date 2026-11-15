@@ -127,6 +127,17 @@
 
     <!-- ============================== MESA ============================== -->
     <section id="screen-table" class="screen" aria-label="Mesa de juego">
+      <!-- En el móvil en vertical pedimos girarlo: la mesa se juega en horizontal -->
+      <div class="rotate-hint" id="rotate-hint">
+        <div class="rotate-box panel">
+          <div class="rotate-phone" aria-hidden="true"><span>♠</span></div>
+          <h2>GIRA EL MÓVIL</h2>
+          <p>La mesa se juega en horizontal: más sitio para tus cartas, las fichas y los rivales.</p>
+          <button class="mbtn mbtn-play mbtn-wide" id="rotate-go"><span>GIRAR PANTALLA</span></button>
+          <p class="rotate-manual" id="rotate-manual">Si no gira, quita el bloqueo de rotación del teléfono.</p>
+          <button class="link-btn" id="rotate-skip">Seguir en vertical</button>
+        </div>
+      </div>
       <header class="topbar">
         <button class="icon-btn" id="btn-leave" title="Salir">←</button>
         <div class="topbar-title">

@@ -1,0 +1,9 @@
+# Despliegue gratuito en Render (https://render.com): New + → Blueprint → este repositorio.
+services:
+  - type: web
+    name: el-sotano-poker
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    plan: free

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>El Sótano Póker</title>
+  <meta name="description" content="Póker clandestino online: Póker de 3 Cartas y Póker de 5 Cartas con amigos, con tutorial.">
+  <meta name="theme-color" content="#0c1716">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23140a08'/%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle' fill='%23d4af37'%3E%E2%99%A0%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-screen="home">
+  <canvas class="bg-canvas" id="bg-canvas" aria-hidden="true"></canvas>
+  <div class="crt" aria-hidden="true"></div>
+
+  <main id="app">
+    <!-- ============================== MENÚ PRINCIPAL ============================== -->
+    <section id="screen-home" class="screen active" aria-label="Menú principal">
+      <div class="menu-wrap">
+        <div class="logo-block">
+          <h1 class="logo" aria-label="El Sótano">
+            <span class="logo-row small" data-wobble>EL</span>
+            <span class="logo-row" data-wobble>SÓTANO</span>
+          </h1>
+          <div class="logo-sub"><span>♠</span> PÓKER CLANDESTINO <span>♦</span></div>
+        </div>
+
+        <div class="fan" id="home-fan" aria-hidden="true"></div>
+
+        <nav class="main-menu" aria-label="Menú">
+          <button class="mbtn mbtn-play" data-menu="solo"><span>JUGAR</span></button>
+          <button class="mbtn mbtn-friends" data-menu="online"><span>AMIGOS</span></button>
+          <button class="mbtn mbtn-learn" data-open-tutorial="three"><span>TUTORIAL</span></button>
+          <button class="mbtn mbtn-ranks" data-open-tutorial="ranks"><span>MANOS</span></button>
+        </nav>
+        <p class="fineprint">Fichas ficticias · aquí sólo se apuesta el orgullo</p>
+      </div>
+
+      <!-- Hoja de preparación (se abre desde JUGAR o AMIGOS) -->
+      <div class="setup" id="setup" hidden>
+        <div class="setup-box panel" role="dialog" aria-modal="true" aria-labelledby="setup-title">
+          <header class="setup-head">
+            <button class="mbtn mbtn-back" id="setup-back"><span>← VOLVER</span></button>
+            <h2 id="setup-title">NUEVA PARTIDA</h2>
+          </header>
+
+          <label class="field">
+            <span>TU APODO</span>
+            <input id="name-input" maxlength="16" autocomplete="nickname" placeholder="Forastero" spellcheck="false">
+          </label>
+
+          <div class="mode-pick" role="radiogroup" aria-label="Elige el juego">
+            <button class="mode-card selected" data-mode="three" role="radio" aria-checked="true">
+              <span class="mode-badge">PRINCIPAL</span>
+              <span class="mode-title">3 CARTAS</span>
+              <span class="mode-desc">Tú contra la casa. Ante, Pair Plus y nervios de acero.</span>
+              <span class="mode-mini" data-cards="Qh Kh Ah"></span>
+            </button>
+            <button class="mode-card" data-mode="draw" role="radio" aria-checked="false">
+              <span class="mode-badge alt">CLÁSICO</span>
+              <span class="mode-title">5 CARTAS</span>
+              <span class="mode-desc">Descarte entre jugadores. Faroles, botes y cara de póker.</span>
+              <span class="mode-mini" data-cards="Ts Js Qs Ks As"></span>
+            </button>
+          </div>
+
+          <div class="setup-actions" data-for="solo">
+            <button class="mbtn mbtn-play mbtn-wide" id="btn-solo"><span>EMPEZAR</span></button>
+            <small>Contra la casa y los habituales del local. Sin conexión.</small>
+          </div>
+
+          <div class="setup-actions online-block" id="online-block" data-for="online">
+            <button class="mbtn mbtn-friends mbtn-wide" id="btn-create"><span>CREAR MESA PRIVADA</span></button>
+            <div class="or-line"><span>o entra con un código</span></div>
+            <div class="join-row">
+              <input id="code-input" maxlength="4" placeholder="ABCD" autocomplete="off" spellcheck="false" aria-label="Código de la mesa">
+              <button class="mbtn mbtn-play" id="btn-join"><span>ENTRAR</span></button>
+            </div>
+          </div>
+          <p class="online-note" id="online-note" data-for="online" hidden></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== SALA ============================== -->
+    <section id="screen-lobby" class="screen" aria-label="Sala privada">
+      <div class="lobby-wrap">
+        <div class="panel lobby-main">
+          <div class="lobby-head">
+            <div>
+              <div class="eyebrow">Mesa privada</div>
+              <div class="room-code" id="lobby-code">····</div>
+            </div>
+            <div class="lobby-share">
+              <button class="btn btn-ghost btn-sm" id="btn-copy-link">🔗 Copiar invitación</button>
+              <small>Pasa el código o el enlace a tus amigos</small>
+            </div>
+          </div>
+
+          <h3 class="section-title">Juego</h3>
+          <div class="mode-toggle" id="lobby-modes">
+            <button data-mode="three">Póker de 3 Cartas <em>principal</em></button>
+            <button data-mode="draw">Póker de 5 Cartas <em>clásico</em></button>
+          </div>
+
+          <h3 class="section-title">En la mesa <span id="lobby-count"></span></h3>
+          <ul class="player-list" id="lobby-players"></ul>
+
+          <div class="lobby-actions">
+            <button class="btn btn-ghost" id="btn-add-bot">🤖 Sentar un habitual</button>
+            <button class="btn btn-gold" id="btn-start">Empezar partida ▶</button>
+          </div>
+          <p class="lobby-wait" id="lobby-wait" hidden></p>
+          <div class="lobby-foot">
+            <button class="link-btn" id="btn-lobby-leave">← Salir del local</button>
+            <button class="link-btn" data-open-tutorial="three">📖 Tutorial</button>
+          </div>
+        </div>
+        <div class="panel lobby-chat">
+          <div class="chat" data-chat></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== MESA ============================== -->
+    <section id="screen-table" class="screen" aria-label="Mesa de juego">
+      <header class="topbar">
+        <button class="icon-btn" id="btn-leave" title="Salir">←</button>
+        <div class="topbar-title">
+          <span class="tb-mode" id="tb-mode">Póker de 3 Cartas</span>
+          <span class="tb-room" id="tb-room"></span>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-btn" data-open-tutorial="auto" title="Tutorial">?</button>
+          <button class="icon-btn" data-open-tutorial="ranks" title="Ranking de manos">♛</button>
+          <button class="icon-btn" id="btn-sound" title="Sonido">🔊</button>
+          <button class="icon-btn" id="btn-menu" title="Más">⋯</button>
+          <button class="icon-btn chat-toggle" id="btn-chat" title="Chat">💬<span class="badge" id="chat-badge" hidden></span></button>
+        </div>
+        <div class="menu" id="menu" hidden>
+          <button id="menu-rebuy">💰 Recargar fichas</button>
+          <button id="menu-addbot">🤖 Sentar un habitual</button>
+          <button id="menu-stop">⏹ Detener partida (volver a la sala)</button>
+          <button id="menu-copy">🔗 Copiar invitación</button>
+        </div>
+      </header>
+
+      <div class="table-area">
+        <div class="table-wrap">
+          <div class="table" id="table">
+            <div class="felt">
+              <svg class="felt-arc" viewBox="0 0 400 70" aria-hidden="true">
+                <path id="arcPath" d="M 10 12 Q 200 92 390 12" fill="none"/>
+                <text><textPath href="#arcPath" startOffset="50%" text-anchor="middle" id="felt-arc-text">EL CRUPIER CALIFICA CON REINA O MEJOR</textPath></text>
+              </svg>
+              <div class="felt-paytable" id="felt-paytable"></div>
+
+              <!-- Póker de 3 cartas -->
+              <div class="shoe" id="shoe" aria-hidden="true"></div>
+              <div class="dealer-zone" id="dealer-zone">
+                <div class="dealer-label">Crupier</div>
+                <div class="cards-row dealer-cards" id="dealer-cards"></div>
+                <div class="dealer-hand" id="dealer-hand"></div>
+              </div>
+              <div class="bet-spots" id="bet-spots">
+                <button class="spot spot-pp" data-spot="pp"><span class="spot-name">PAIR<br>PLUS</span><span class="spot-chips"></span></button>
+                <button class="spot spot-ante" data-spot="ante"><span class="spot-name">ANTE</span><span class="spot-chips"></span></button>
+                <div class="spot spot-play" data-spot="play"><span class="spot-name">PLAY</span><span class="spot-chips"></span></div>
+              </div>
+
+              <!-- Póker de 5 cartas -->
+              <div class="pot-zone" id="pot-zone">
+                <div class="phase-label" id="phase-label"></div>
+                <div class="pot-chips" id="pot-chips"></div>
+                <div class="pot-amount" id="pot-amount"></div>
+                <div class="pot-result" id="pot-result"></div>
+              </div>
+            </div>
+            <div class="seats" id="seats"></div>
+          </div>
+        </div>
+
+        <div class="dock" id="dock">
+          <div class="dock-hand">
+            <div class="cards-row my-cards" id="my-cards"></div>
+            <div class="my-hand-name" id="my-hand-name"></div>
+            <div class="my-strip" id="my-strip"></div>
+          </div>
+          <div class="dock-controls" id="controls"></div>
+        </div>
+      </div>
+
+      <aside class="drawer" id="drawer">
+        <div class="drawer-tabs">
+          <button class="active" data-tab="chat">Chat</button>
+          <button data-tab="history">Jugadas</button>
+          <button class="drawer-close" id="drawer-close" title="Cerrar">✕</button>
+        </div>
+        <div class="chat" data-chat data-tabpane="chat"></div>
+        <ol class="history" id="history" data-tabpane="history" hidden></ol>
+      </aside>
+    </section>
+  </main>
+
+  <!-- ============================== TUTORIAL ============================== -->
+  <div class="modal" id="tutorial" hidden role="dialog" aria-modal="true" aria-labelledby="tut-heading">
+    <div class="modal-box">
+      <header class="modal-head">
+        <h2 id="tut-heading">Escuela de El Sótano</h2>
+        <button class="icon-btn" data-close-modal title="Cerrar">✕</button>
+      </header>
+      <nav class="tut-tabs" id="tut-tabs">
+        <button data-tut="three">3 Cartas</button>
+        <button data-tut="draw">5 Cartas</button>
+        <button data-tut="ranks">Ranking</button>
+        <button data-tut="online">Con amigos</button>
+      </nav>
+      <div class="tut-body" id="tut-body"></div>
+      <footer class="tut-foot">
+        <button class="btn btn-ghost btn-sm" id="tut-prev">← Anterior</button>
+        <div class="tut-dots" id="tut-dots"></div>
+        <button class="btn btn-gold btn-sm" id="tut-next">Siguiente →</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="modal" id="confirm" hidden role="alertdialog" aria-modal="true" aria-labelledby="confirm-text">
+    <div class="modal-box confirm-box">
+      <p id="confirm-text"></p>
+      <div class="ctl-row">
+        <button class="btn btn-ghost" id="confirm-no">Cancelar</button>
+        <button class="btn btn-red" id="confirm-yes">Sí</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

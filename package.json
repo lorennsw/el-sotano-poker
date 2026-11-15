@@ -1,0 +1,18 @@
+{
+  "name": "el-sotano-poker",
+  "version": "1.0.0",
+  "description": "El Sótano — póker clandestino online: Póker de 3 Cartas y Póker de 5 Cartas con amigos.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "license": "MIT"
+}

@@ -1527,7 +1527,16 @@ async function init() {
       $('#rotate-manual').hidden = false;
     }
   });
-  $('#rotate-skip').addEventListener('click', () => document.body.classList.add('portrait-ok'));
+  // "Seguir en vertical" se recuerda durante la sesión (también si recargas en mitad de una mano)
+  try {
+    if (sessionStorage.getItem('sotano.portrait') === '1') document.body.classList.add('portrait-ok');
+  } catch {}
+  $('#rotate-skip').addEventListener('click', () => {
+    document.body.classList.add('portrait-ok');
+    try {
+      sessionStorage.setItem('sotano.portrait', '1');
+    } catch {}
+  });
   $('#setup').addEventListener('click', (e) => e.target.id === 'setup' && closeSetup());
   document.addEventListener('keydown', (e) => e.key === 'Escape' && !$('#setup').hidden && closeSetup());
 

@@ -9,7 +9,7 @@ la primera carga tarda unos segundos en despertar el servidor).
 
 | Modalidad | Cómo se juega |
 | --- | --- |
-| **Póker de 3 Cartas** (principal) | Reglas de casino: cada jugador contra el crupier. Ante, Play y Pair Plus, el crupier califica con Reina alta, Bono Ante y tabla Pair Plus 1-4-6-30-40. |
+| **Texas Hold’em** (principal) | Sin límite, entre jugadores: botón y ciegas 5/10 que rotan, dos cartas propias, flop, turn y river, mejor mano de 5 entre 7, all-in y botes secundarios. |
 | **Póker de 5 Cartas** (clásico) | Póker cubierto con descarte, sin límite, entre jugadores: ante, dos rondas de apuestas, descarte de hasta 3 (4 con As), all-in y botes secundarios. |
 
 ## Arrancar
@@ -45,9 +45,8 @@ El servidor tiene que ser accesible para tus amigos. Tres formas:
 ├── server.js          HTTP estático + WebSocket (/ws) con salas, reconexión y límites
 ├── shared/            Lógica del juego, la MISMA en servidor y navegador
 │   ├── cards.js       Baraja y barajado criptográfico (Fisher–Yates sin sesgo)
-│   ├── eval3.js       Evaluador de 3 cartas, calificación Q-alta, estrategia Q-6-4, tablas de pago
-│   ├── eval5.js       Evaluador de 5 cartas con desempates completos
-│   ├── three.js       Partida de 3 cartas contra la casa (apuestas, decisiones, liquidación)
+│   ├── eval5.js       Evaluador de 5 cartas con desempates completos y mejor mano de 5 entre 7
+│   ├── holdem.js      Texas Hold’em: ciegas, calles y enseñanza (hereda las apuestas de draw.js)
 │   ├── draw.js        Partida de 5 cartas: turnos, subidas sin límite, all-in corto, botes secundarios
 │   ├── bots.js        Personajes y estrategia de los bots
 │   └── room.js        Sala: jugadores, anfitrión, chat, recargas
@@ -68,9 +67,10 @@ El servidor tiene que ser accesible para tus amigos. Tres formas:
 npm test
 ```
 
-Incluyen la enumeración **exhaustiva** de las 22.100 manos de 3 cartas y las 2.598.960 de 5 cartas
-(frecuencias exactas por categoría y las 7.462 clases distintas), los pagos de cada caso de 3 cartas,
-botes secundarios, la regla de all-in corto que no reabre la subida, el límite de descarte y simulaciones
-de cientos de manos comprobando que no se crean ni se pierden fichas y que nunca se repite una carta.
+Incluyen la enumeración **exhaustiva** de las 2.598.960 manos de 5 cartas (frecuencias exactas por
+categoría y las 7.462 clases distintas), la mejor mano de 5 entre 7 con kicker y empates, ciegas y orden
+de habla del Hold’em (también mano a mano), botes secundarios, la regla de all-in corto que no reabre la
+subida, el límite de descarte y simulaciones de cientos de manos de cada juego comprobando que no se
+crean ni se pierden fichas y que nunca se repite una carta.
 
 > Fichas ficticias: aquí no se juega dinero real.

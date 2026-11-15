@@ -210,7 +210,7 @@ function handleMessage(ws, msg) {
     case 'create': {
       if (ws.session) unbind(ws, { remove: true });
       if (rooms.size >= MAX_ROOMS) return send(ws, { t: 'error', msg: 'El local está a reventar. Prueba en un rato.' });
-      const entry = createRoom(isMode(msg.mode) ? msg.mode : 'three');
+      const entry = createRoom(isMode(msg.mode) ? msg.mode : 'holdem');
       const { player } = entry.room.addHuman(cleanName(msg.name));
       bind(ws, entry, player);
       return;

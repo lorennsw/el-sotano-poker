@@ -1,15 +1,15 @@
 // Una sala (mesa) del garito: jugadores, chat, anfitrión y la partida en curso.
 // La misma clase corre en el servidor (partidas online) y en el navegador (partida en solitario).
 
-import { ThreeCardGame } from './three.js';
+import { HoldemGame } from './holdem.js';
 import { DrawGame } from './draw.js';
 import { BOT_NAMES, AVATARS } from './bots.js';
 import { randomInt } from './cards.js';
 
 export const MAX_SEATS = 6;
 export const START_CHIPS = 1000;
-export const MODES = { three: 'Póker de 3 Cartas', draw: 'Póker de 5 Cartas' };
-export const isMode = (m) => m === 'three' || m === 'draw';
+export const MODES = { holdem: 'Texas Hold’em', draw: 'Póker de 5 Cartas' };
+export const isMode = (m) => m === 'holdem' || m === 'draw';
 
 const ID_ALPHABET = 'abcdefghijkmnopqrstuvwxyz23456789';
 export function randomId(len = 12) {
@@ -28,9 +28,9 @@ export function cleanName(name) {
 }
 
 export class Room {
-  constructor({ id = randomId(5).toUpperCase(), mode = 'three', onUpdate = () => {}, onRemove = () => {} } = {}) {
+  constructor({ id = randomId(5).toUpperCase(), mode = 'holdem', onUpdate = () => {}, onRemove = () => {} } = {}) {
     this.id = id;
-    this.mode = isMode(mode) ? mode : 'three';
+    this.mode = isMode(mode) ? mode : 'holdem';
     this.onUpdate = onUpdate;
     this.onRemove = onRemove;
     this.players = [];
@@ -199,8 +199,8 @@ export class Room {
   // ---------------------------------------------------------------- partida
   startGame() {
     if (this.game) return 'La partida ya está en marcha.';
-    if (this.mode === 'draw' && this.players.length < 2) return 'El Póker de 5 Cartas necesita al menos 2 jugadores (añade un bot).';
-    this.game = this.mode === 'three' ? new ThreeCardGame(this) : new DrawGame(this);
+    if (this.players.length < 2) return `El ${MODES[this.mode]} necesita al menos 2 jugadores (sienta a un habitual).`;
+    this.game = this.mode === 'holdem' ? new HoldemGame(this) : new DrawGame(this);
     this.log(`Empieza la partida: ${MODES[this.mode]}.`);
     this.game.start();
     this.emit();

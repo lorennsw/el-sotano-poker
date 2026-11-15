@@ -101,3 +101,37 @@ function describe5(cat, tb) {
       return `Carta alta: ${RANK_LABEL[tb[0]]}`;
   }
 }
+
+// ---------------------------------------------------------- Texas Hold'em
+
+const COMBOS = {};
+function combos(n) {
+  if (COMBOS[n]) return COMBOS[n];
+  const out = [];
+  for (let a = 0; a < n; a++)
+    for (let b = a + 1; b < n; b++)
+      for (let c = b + 1; c < n; c++)
+        for (let d = c + 1; d < n; d++)
+          for (let e = d + 1; e < n; e++) out.push([a, b, c, d, e]);
+  return (COMBOS[n] = out);
+}
+
+/** La mejor mano de 5 cartas entre 5, 6 o 7 (tus dos cartas + la mesa). */
+export function evaluate7(cards) {
+  if (!Array.isArray(cards) || cards.length < 5 || cards.length > 7) throw new Error('evaluate7: se esperan de 5 a 7 cartas');
+  let best = null;
+  for (const idx of combos(cards.length)) {
+    const five = idx.map((i) => cards[i]);
+    const ev = evaluate5(five);
+    if (!best || ev.score > best.score) best = { ...ev, cards: five };
+  }
+  return best;
+}
+
+/** Cómo llamar a tus dos cartas antes de que salga el flop. */
+export function describeHole([a, b]) {
+  if (a.r === b.r) return { cat: CAT5.PAIR, score: 0, tb: [a.r], name: 'Pareja', desc: `Pareja de ${RANK_PLURAL[a.r]}` };
+  const [hi, lo] = a.r > b.r ? [a, b] : [b, a];
+  const suited = a.s === b.s ? ' del mismo palo' : '';
+  return { cat: CAT5.HIGH, score: 0, tb: [hi.r, lo.r], name: 'Carta alta', desc: `${RANK_LABEL[hi.r]}-${RANK_LABEL[lo.r]}${suited}` };
+}

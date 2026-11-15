@@ -19,8 +19,9 @@ const SHOWDOWN_MS = 9000;
 const FOLDWIN_MS = 5000;
 
 export class DrawGame {
-  constructor(room) {
+  constructor(room, rules = DRAW_RULES) {
     this.room = room;
+    this.rules = rules;
     this.mode = 'draw';
     this.phase = 'waiting';
     this.hand = 0;
@@ -32,7 +33,7 @@ export class DrawGame {
     this.muck = [];
     this.pot = 0;
     this.currentBet = 0;
-    this.minRaise = DRAW_RULES.minBet;
+    this.minRaise = rules.minBet;
     this.fullSeq = 0;
     this.turn = null;
     this.deadline = null;
@@ -80,7 +81,7 @@ export class DrawGame {
       return;
     }
     for (const p of this.room.players) {
-      if (p.isBot && p.chips < DRAW_RULES.ante) p.chips = this.room.startChips;
+      if (p.isBot && p.chips < this.rules.ante) p.chips = this.room.startChips;
     }
     const eligible = this.room.players
       .filter((p) => p.chips > 0 && (p.isBot || p.connected))
@@ -116,7 +117,7 @@ export class DrawGame {
         drew: null, newIdx: [], lastAction: '', won: 0, show: false, ev: null,
       };
       this.ps.set(p.id, s);
-      const ante = Math.min(DRAW_RULES.ante, p.chips);
+      const ante = Math.min(this.rules.ante, p.chips);
       p.chips -= ante;
       s.total = ante;
       this.pot += ante;
@@ -155,7 +156,7 @@ export class DrawGame {
   startBetting(phase) {
     this.phase = phase;
     this.currentBet = 0;
-    this.minRaise = DRAW_RULES.minBet;
+    this.minRaise = this.rules.minBet;
     this.fullSeq = 0;
     for (const pid of this.order) {
       const s = this.ps.get(pid);
@@ -227,7 +228,7 @@ export class DrawGame {
     const maxTo = s.bet + p.chips;
     const othersCanAct = this.order.some((o) => o !== pid && !this.ps.get(o).folded && !this.ps.get(o).allIn);
     const canRaise = p.chips > toCall && s.seenSeq < this.fullSeq && othersCanAct;
-    const minTo = Math.min(maxTo, this.currentBet === 0 ? DRAW_RULES.minBet : this.currentBet + this.minRaise);
+    const minTo = Math.min(maxTo, this.currentBet === 0 ? this.rules.minBet : this.currentBet + this.minRaise);
     return {
       toCall,
       callAmount: Math.min(toCall, p.chips),
@@ -292,7 +293,7 @@ export class DrawGame {
         if (to < o.minTo && to !== o.maxTo) return `La subida mínima es hasta ${o.minTo}.`;
         const opening = this.currentBet === 0;
         const inc = to - this.currentBet;
-        const full = opening ? to >= DRAW_RULES.minBet : inc >= this.minRaise;
+        const full = opening ? to >= this.rules.minBet : inc >= this.minRaise;
         if (full) {
           this.minRaise = opening ? to : inc;
           this.fullSeq++;
@@ -438,7 +439,7 @@ export class DrawGame {
     const live = this.live();
     for (const pid of live) {
       const s = this.ps.get(pid);
-      s.ev = evaluate5(s.cards);
+      s.ev = this.evalFor(pid);
       s.show = true;
     }
     const pots = computePots(this.order.map((pid) => ({ pid, amount: this.ps.get(pid).total, folded: this.ps.get(pid).folded })));
@@ -474,6 +475,11 @@ export class DrawGame {
     this.deadline = this.room.now() + ms;
     this.room.setTimer('g:next', ms, () => this.tryStartHand());
     this.room.emit();
+  }
+
+  /** Mano de un jugador (la variante Hold'em la combina con la mesa). */
+  evalFor(pid) {
+    return evaluate5(this.ps.get(pid).cards);
   }
 
   // ---------------------------------------------------------------- bots
@@ -548,7 +554,7 @@ export class DrawGame {
       if (!s) return { id: p.id, inHand: false };
       const mine = p.id === pid;
       const visible = s.cards.length > 0 && (mine || (showdown && s.show));
-      const ev = visible ? s.ev || evaluate5(s.cards) : null;
+      const ev = visible ? s.ev || this.evalFor(p.id) : null;
       return {
         id: p.id,
         inHand: true,
@@ -567,12 +573,12 @@ export class DrawGame {
     });
     const me = this.turn === pid ? (this.phase === 'draw' ? { draw: true } : this.options(pid)) : null;
     return {
-      mode: 'draw',
+      mode: this.mode,
       hand: this.hand,
       phase: this.phase,
       deadline: this.deadline,
       stopRequested: this.stopRequested,
-      rules: DRAW_RULES,
+      rules: this.rules,
       pot: this.pot,
       currentBet: this.currentBet,
       button: this.buttonPid,

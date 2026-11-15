@@ -4,7 +4,6 @@
 //  · En solitario: la misma lógica de sala corre en el navegador con bots.
 
 import { Room } from '../shared/room.js';
-import { evaluate3, shouldPlay } from '../shared/eval3.js';
 import { drawPlan } from '../shared/bots.js';
 import { createCard, setCardFront, cardKey, parseCards, renderStatic } from './cards-ui.js';
 import { sfx, isMuted, setMuted } from './sound.js';
@@ -50,14 +49,13 @@ const session = {
 // ------------------------------------------------------------------ estado
 
 const S = {
-  mode: store.get('sotano.mode', 'three') === 'draw' ? 'draw' : 'three',
+  mode: store.get('sotano.mode', 'holdem') === 'draw' ? 'draw' : 'holdem',
   online: false,
   transport: null,
   offline: false,
   view: null,
   prev: null,
   offset: 0,
-  three: { target: 'ante', ante: 0, pp: 0, last: null, round: -1, history: [] },
   draw: { sel: new Set(), raise: 0, hand: -1 },
   ctlKey: '',
   chatSeen: new Set(),
@@ -183,7 +181,7 @@ class LocalTransport {
     this.room = new Room({ id: 'SOLO', mode, onUpdate: (r) => this.pid && h.state(r.view(this.pid)) });
     const { player } = this.room.addHuman(name);
     this.pid = player.id;
-    const bots = mode === 'three' ? 2 : 3;
+    const bots = 3;
     for (let i = 0; i < bots; i++) this.room.addBot();
     h.joined({ room: 'SOLO', pid: this.pid, offline: true });
     this.room.startGame();
@@ -291,7 +289,6 @@ const handlers = {
     S.offline = !!msg.offline;
     S.chatSeen = new Set();
     S.unread = 0;
-    S.three.history = [];
     document.body.classList.toggle('offline', S.offline);
   },
   state(view) {
@@ -378,10 +375,9 @@ function resetTableUI() {
   S.view = null;
   S.prev = null;
   S.ctlKey = '';
-  S.three.round = -1;
   S.draw.hand = -1;
   S.draw.sel.clear();
-  ['#dealer-cards', '#my-cards', '#seats'].forEach((s) => ($(s).textContent = ''));
+  ['#board', '#my-cards', '#seats'].forEach((s) => ($(s).textContent = ''));
   $$('[data-chat] .chat-log').forEach((l) => (l.textContent = ''));
   $('#history').textContent = '';
 }
@@ -546,7 +542,7 @@ function closeDrawer() {
 function renderTable(v) {
   const g = v.game;
   const table = $('#table');
-  table.classList.toggle('mode-three', g.mode === 'three');
+  table.classList.toggle('mode-holdem', g.mode === 'holdem');
   table.classList.toggle('mode-draw', g.mode === 'draw');
   document.body.dataset.mode = g.mode;
   $('#tb-mode').textContent = v.modeName;
@@ -560,8 +556,7 @@ function renderTable(v) {
   $('#menu-copy').hidden = S.offline;
 
   renderSeats(v);
-  if (g.mode === 'three') renderThree(v);
-  else renderDraw(v);
+  renderDraw(v);
   renderMyStrip(v, me);
   tick();
 }
@@ -584,17 +579,17 @@ function renderMyStrip(v, me) {
 // Ángulo de cada silla (0 = yo, abajo; sentido horario). En 3 cartas dejamos libre
 // el arco superior, que es el sitio del crupier.
 const SEAT_ANGLES = {
-  three: [90, 145, 180, 225, 315, 0],
+  holdem: [90, 150, 210, 270, 330, 30],
   draw: [90, 150, 210, 270, 330, 30],
 };
 // En el móvil mis cartas flotan sobre el borde de abajo: subimos las sillas laterales bajas.
 const SEAT_ANGLES_NARROW = {
-  three: [90, 160, 195, 215, 325, 20],
+  holdem: [90, 160, 205, 270, 335, 20],
   draw: [90, 160, 205, 270, 335, 20],
 };
 // Móvil en horizontal: en 5 cartas las sillas laterales van a media altura para separar sus filas.
 const SEAT_ANGLES_LANDSCAPE = {
-  three: SEAT_ANGLES.three,
+  holdem: [90, 155, 205, 270, 335, 25],
   draw: [90, 155, 205, 270, 335, 25],
 };
 const narrow = matchMedia('(max-width: 640px)');
@@ -614,6 +609,7 @@ function buildSeat(p) {
       <div class="avatar"></div>
       <div class="pinfo"><div class="pname"></div><div class="pchips"></div></div>
       <div class="dealer-btn" title="Repartidor">D</div>
+      <div class="blind-btn"></div>
       <div class="ptimer"><i></i></div>
     </div>
     <div class="seat-status"></div>
@@ -657,8 +653,7 @@ function renderSeats(v) {
     $('.pchips', el).textContent = `${fmt(p.chips)} ◉`;
 
     const s = g.seats.find((x) => x.id === p.id) || {};
-    if (g.mode === 'three') renderSeatThree(el, p, s, g, v, rel);
-    else renderSeatDraw(el, p, s, g, v, rel);
+    renderSeatDraw(el, p, s, g, v, rel);
   }
   for (const el of existing.values()) el.remove();
 }
@@ -722,49 +717,17 @@ function dealDelay(rel, i) {
   return i * 260 + rel * 45;
 }
 
-function renderSeatThree(el, p, s, g, v, rel) {
-  const mine = p.id === v.you;
-  el.classList.toggle('is-turn', false);
-  el.classList.toggle('folded', !!s.folded && g.phase !== 'betting');
-  el.classList.toggle('winner', g.phase === 'showdown' && s.result?.net > 0);
-  $('.dealer-btn', el).hidden = true;
-  $('.ptimer', el).hidden = true;
-  // Cartas: las mías van al panel inferior
-  const cardsBox = $('.seat-cards', el);
-  if (!mine) {
-    const cards = s.cardCount ? s.cards || [null, null, null] : [];
-    syncCards(cardsBox, cards, 'sm', { delay: (i) => dealDelay(rel, i), reveal: (i) => 500 + rel * 140 + i * 90 });
-  } else cardsBox.textContent = '';
-  setHandLabel(el, !mine && g.phase === 'showdown' ? s.hand : null);
-  let status = '';
-  let cls = '';
-  if (g.phase === 'betting') {
-    if (s.ready) [status, cls] = ['Apuesta hecha', 'ok'];
-    else if (!p.connected) status = 'Desconectado';
-    else status = p.isBot ? 'Pensando…' : 'Apostando…';
-  } else if (s.inRound) {
-    if (g.phase === 'deciding') {
-      if (s.ante === 0) status = 'Sólo Pair Plus';
-      else if (!s.decided) status = 'Decidiendo…';
-      else if (s.folded) [status, cls] = ['Se retira', 'bad'];
-      else [status, cls] = ['Juega', 'ok'];
-    } else if (g.phase === 'showdown') {
-      if (s.folded) [status, cls] = ['Se retiró', 'bad'];
-    }
-  } else status = 'Mirando';
-  setStatus(el, mine ? '' : status, cls);
-  const total = (s.ante || 0) + (s.pp || 0) + (s.play || 0);
-  if (mine) setBet(el, 0);
-  else setBet(el, s.inRound ? total : 0);
-  setPop(el, g.phase === 'showdown' && s.result ? s.result.net : 0, `${g.round}`);
-}
-
 function renderSeatDraw(el, p, s, g, v, rel) {
   const mine = p.id === v.you;
   el.classList.toggle('is-turn', g.turn === p.id);
   el.classList.toggle('folded', !!s.folded);
   el.classList.toggle('winner', g.phase === 'showdown' && s.won > 0);
   $('.dealer-btn', el).hidden = g.button !== p.id || g.phase === 'waiting';
+  const blind = g.mode === 'holdem' && g.phase !== 'waiting' && s.inHand ? (g.sb === p.id ? 'SB' : g.bb === p.id ? 'BB' : '') : '';
+  const bb = $('.blind-btn', el);
+  bb.textContent = blind;
+  bb.hidden = !blind;
+  bb.title = blind === 'SB' ? 'Ciega pequeña' : blind === 'BB' ? 'Ciega grande' : '';
   $('.ptimer', el).hidden = g.turn !== p.id;
   const cardsBox = $('.seat-cards', el);
   if (!mine) {
@@ -781,15 +744,14 @@ function renderSeatDraw(el, p, s, g, v, rel) {
   else if (s.lastAction) status = s.lastAction;
   if (g.phase === 'draw' && s.inHand && !s.folded && s.drew !== null && g.turn !== p.id) status = s.drew === 0 ? 'Se sirve' : `Cambia ${s.drew}`;
   setStatus(el, status, cls);
-  const betting = g.phase === 'bet1' || g.phase === 'bet2';
-  setBet(el, s.inHand && betting ? s.bet : 0);
+  setBet(el, s.inHand && BETTING.has(g.phase) ? s.bet : 0);
   setPop(el, g.phase === 'showdown' && s.won ? s.won : 0, `${g.hand}`);
 }
 
 // ------------------------------------------------------------ cartas animadas
 
 function dealIn(el, from, delay) {
-  const src = from || $('#shoe');
+  const src = from || $('#pot-chips');
   const r = el.getBoundingClientRect();
   const f = src.getBoundingClientRect();
   el.style.setProperty('--dx', `${f.left + f.width / 2 - (r.left + r.width / 2)}px`);
@@ -809,7 +771,7 @@ function dealIn(el, from, delay) {
 }
 
 function dealSource() {
-  return S.view?.game?.mode === 'draw' ? $('#pot-chips') : $('#shoe');
+  return $('#pot-chips');
 }
 
 /**
@@ -856,230 +818,15 @@ function syncCards(box, cards, size, { delay = (i) => i * 120, reveal = (i) => i
   });
 }
 
-// ------------------------------------------------------------ 3 cartas: mesa
+// ------------------------------------------------- mesa: Hold'em y 5 cartas
 
-const PAYTABLE_THREE = `
-  <div><b>PAIR PLUS</b> Pareja 1:1 · Color 4:1 · Escalera 6:1 · Trío 30:1 · Escalera de color 40:1</div>
-  <div><b>BONO ANTE</b> Escalera 1:1 · Trío 4:1 · Escalera de color 5:1</div>`;
-
-function renderThree(v) {
-  const g = v.game;
-  const me = v.players.find((p) => p.id === v.you);
-  const s = g.seats.find((x) => x.id === v.you) || {};
-  $('#felt-arc-text').textContent = 'EL CRUPIER CALIFICA CON REINA O MEJOR';
-  if ($('#felt-paytable').dataset.mode !== 'three') {
-    $('#felt-paytable').innerHTML = PAYTABLE_THREE;
-    $('#felt-paytable').dataset.mode = 'three';
-  }
-
-  // Nueva ronda: preparamos la apuesta (repetimos la anterior si se puede)
-  if (g.round !== S.three.round) {
-    S.three.round = g.round;
-    const last = S.three.last;
-    if (last && 2 * last.ante + last.pp <= me.chips) {
-      S.three.ante = last.ante;
-      S.three.pp = last.pp;
-    } else {
-      S.three.ante = 0;
-      S.three.pp = 0;
-    }
-    S.ctlKey = '';
-  }
-
-  // Crupier
-  syncCards($('#dealer-cards'), g.dealer.cards, 'md', {
-    delay: (i) => dealDelay(6, i),
-    reveal: (i) => 150 + i * 220,
-  });
-  const dh = $('#dealer-hand');
-  if (g.phase === 'showdown' && g.dealer.hand) {
-    dh.innerHTML = '';
-    const a = document.createElement('span');
-    a.textContent = g.dealer.hand.desc;
-    const b = document.createElement('em');
-    b.className = g.dealer.qualifies ? 'ok' : 'bad';
-    b.textContent = g.dealer.qualifies ? 'califica' : 'no califica';
-    dh.append(a, b);
-  } else dh.textContent = g.phase === 'deciding' ? 'Esperando decisiones…' : '';
-
-  // Mis casillas
-  const editing = g.phase === 'betting' && !s.ready;
-  const ante = editing ? S.three.ante : s.ante || 0;
-  const pp = editing ? S.three.pp : s.pp || 0;
-  const play = s.play || 0;
-  setSpot('ante', ante, editing && S.three.target === 'ante');
-  setSpot('pp', pp, editing && S.three.target === 'pp');
-  setSpot('play', play, false);
-  $('#bet-spots').classList.toggle('editing', editing);
-  const res = g.phase === 'showdown' ? s.result : null;
-  $('#bet-spots').classList.toggle('won', !!res && res.net > 0);
-  $('#bet-spots').classList.toggle('lost', !!res && res.net < 0);
-
-  // Mis cartas
-  const mine = s.cardCount ? s.cards || [null, null, null] : [];
-  syncCards($('#my-cards'), mine, 'lg', { delay: (i) => dealDelay(0, i), reveal: (i) => 120 + i * 120 });
-  $('#my-hand-name').textContent = s.hand ? s.hand.desc : '';
-  $('#my-hand-name').classList.toggle('strong', !!s.hand && s.hand.cat >= 1);
-
-  // Efectos de fin de mano
-  if (g.phase === 'showdown' && S.prev?.game?.phase !== 'showdown' && res) {
-    setTimeout(() => (res.net > 0 ? sfx.win() : res.net < 0 ? sfx.lose() : null), 900);
-    S.three.history.unshift({ round: g.round, hand: s.hand?.desc || '', dealer: g.dealer.hand?.desc || '', net: res.net, folded: s.folded });
-    S.three.history = S.three.history.slice(0, 20);
-  }
-  if (g.phase === 'deciding' && S.prev?.game?.phase === 'betting' && s.inRound && s.ante > 0) {
-    setTimeout(() => sfx.turn(), 1400);
-  }
-  // Fichas al tapete
-  const readyNow = g.seats.filter((x) => x.ready).length;
-  const readyBefore = S.prev?.game?.mode === 'three' && S.prev.game.round === g.round ? S.prev.game.seats.filter((x) => x.ready).length : 0;
-  if (readyNow > readyBefore) sfx.chips();
-
-  renderThreeControls(v, s, me);
-  renderHistoryThree();
-}
-
-function setSpot(name, amount, selected) {
-  const spot = $(`#bet-spots [data-spot="${name}"]`);
-  spot.classList.toggle('selected', selected);
-  spot.classList.toggle('has-bet', amount > 0);
-  const box = $('.spot-chips', spot);
-  if (box.dataset.amount === String(amount)) return;
-  box.dataset.amount = String(amount);
-  box.textContent = '';
-  if (amount > 0) {
-    box.append(chipStack(amount, 6));
-    const n = document.createElement('b');
-    n.textContent = fmt(amount);
-    box.append(n);
-  }
-}
-
-function renderThreeControls(v, s, me) {
-  const g = v.game;
-  const box = $('#controls');
-  const L = g.limits;
-  let key;
-  if (g.phase === 'betting') key = s.ready ? 'bet-ready' : me.chips < L.anteMin && me.chips < L.ppMin ? 'bet-broke' : 'bet-edit';
-  else if (g.phase === 'deciding') key = !s.inRound ? 'dec-out' : s.ante > 0 && !s.decided ? 'dec-choose' : 'dec-wait';
-  else key = `show-${g.round}-${s.inRound ? 'in' : 'out'}`;
-  key += `|${g.stopRequested}`;
-
-  if (key !== S.ctlKey) {
-    S.ctlKey = key;
-    box.className = 'dock-controls';
-    if (key.startsWith('bet-edit')) {
-      box.innerHTML = `
-        <div class="ctl-row targets">
-          <button data-target="ante">ANTE <b data-v="ante"></b></button>
-          <button data-target="pp">PAIR PLUS <b data-v="pp"></b></button>
-        </div>
-        <div class="chip-rack">
-          ${[5, 25, 100, 500].map((c) => `<button class="chip-btn c${c}" data-chip="${c}" title="Añadir ${c}"><span>${c}</span></button>`).join('')}
-        </div>
-        <div class="ctl-row">
-          <button class="btn btn-ghost btn-sm" data-act="clear">Borrar</button>
-          <button class="btn btn-ghost btn-sm" data-act="double">×2</button>
-          <button class="btn btn-gold btn-deal" data-act="deal">REPARTIR</button>
-        </div>
-        <div class="ctl-note" data-note></div>
-        <div class="ctl-timer" data-timer></div>`;
-    } else if (key.startsWith('bet-ready')) {
-      box.innerHTML = `<div class="ctl-msg">✔ Apuesta hecha: Ante <b>${fmt(s.ante)}</b> · Pair Plus <b>${fmt(s.pp)}</b></div>
-        <div class="ctl-sub">Esperando al resto de la mesa…</div><div class="ctl-timer" data-timer></div>`;
-    } else if (key.startsWith('bet-broke')) {
-      box.innerHTML = `<div class="ctl-msg">Te has quedado sin fichas.</div>
-        <div class="ctl-row"><button class="btn btn-gold" data-act="rebuy">💰 Recargar ${fmt(v.startChips)}</button></div>`;
-    } else if (key.startsWith('dec-choose')) {
-      const ev = s.cards ? evaluate3(s.cards) : null;
-      const play = ev ? shouldPlay(ev) : true;
-      const tip = ev
-        ? ev.cat > 0
-          ? `Con ${ev.name.toLowerCase()} se juega siempre.`
-          : play
-            ? 'Supera Q-6-4: un profesional jugaría.'
-            : 'No llega a Q-6-4: un profesional se retiraría.'
-        : '';
-      box.innerHTML = `
-        <div class="advice"><span>El crupier susurra:</span> “${tip}”</div>
-        <div class="ctl-row decide">
-          <button class="btn btn-red ${play ? '' : 'suggest'}" data-act="fold">RETIRARSE<small>pierdes ${fmt(s.ante + s.pp)}</small></button>
-          <button class="btn btn-gold ${play ? 'suggest' : ''}" data-act="play">JUGAR<small>pones ${fmt(s.ante)} en Play</small></button>
-        </div>
-        <div class="ctl-timer" data-timer></div>`;
-    } else if (key.startsWith('dec-wait')) {
-      box.innerHTML = `<div class="ctl-msg">${s.folded ? 'Te has retirado.' : s.ante === 0 ? 'Juegas sólo el Pair Plus.' : 'Juegas. ¡Que hable el crupier!'}</div>
-        <div class="ctl-sub">Esperando a que decidan los demás…</div><div class="ctl-timer" data-timer></div>`;
-    } else if (key.startsWith('dec-out')) {
-      box.innerHTML = `<div class="ctl-msg">Esta mano la ves desde la barra 🥃</div><div class="ctl-sub">Podrás apostar en la siguiente.</div>`;
-    } else if (key.startsWith('show')) {
-      const r = s.result;
-      if (r) {
-        box.className = `dock-controls result ${r.net > 0 ? 'win' : r.net < 0 ? 'lose' : 'push'}`;
-        box.innerHTML = `
-          <div class="result-head">${r.net > 0 ? '¡Cobras!' : r.net < 0 ? (s.folded ? 'Te retiraste' : 'Gana la casa') : 'Empate'} <b>${signed(r.net)}</b></div>
-          <ul class="result-lines">${r.lines.map((l) => `<li><span>${esc(l.label)}</span><b class="${l.amount > 0 ? 'win' : l.amount < 0 ? 'lose' : ''}">${signed(l.amount)}</b></li>`).join('')}</ul>
-          <div class="ctl-timer" data-timer data-label="Siguiente mano en"></div>`;
-      } else {
-        box.innerHTML = `<div class="ctl-msg">Fin de la mano.</div><div class="ctl-timer" data-timer data-label="Siguiente mano en"></div>`;
-      }
-    }
-    if (g.stopRequested) box.insertAdjacentHTML('beforeend', '<div class="ctl-sub stop">La partida se detendrá al acabar esta mano.</div>');
-  }
-  updateThreeBetUI(v, me);
-}
-
-function updateThreeBetUI(v, me) {
-  const g = v.game;
-  const box = $('#controls');
-  if (!$('[data-chip]', box)) return;
-  const L = g.limits;
-  const T = S.three;
-  $$('[data-target]', box).forEach((b) => b.classList.toggle('active', b.dataset.target === T.target));
-  $('[data-v="ante"]', box).textContent = fmt(T.ante);
-  $('[data-v="pp"]', box).textContent = fmt(T.pp);
-  const need = 2 * T.ante + T.pp;
-  const note = $('[data-note]', box);
-  let err = '';
-  if (T.ante === 0 && T.pp === 0) err = 'Elige casilla y toca las fichas.';
-  else if (T.ante > 0 && T.ante < L.anteMin) err = `El Ante mínimo es ${L.anteMin}.`;
-  else if (T.pp > 0 && T.pp < L.ppMin) err = `El Pair Plus mínimo es ${L.ppMin}.`;
-  else if (need > me.chips) err = `Necesitas ${fmt(need)} fichas (el Ante se reserva doble para poder jugar).`;
-  note.textContent = err || (T.ante > 0 ? `Reservas ${fmt(T.ante)} para la apuesta Play.` : 'Sólo Pair Plus: no tendrás que decidir.');
-  note.classList.toggle('bad', !!err && !(T.ante === 0 && T.pp === 0));
-  $('[data-act="deal"]', box).disabled = !!err;
-  $$('[data-chip]', box).forEach((b) => {
-    const c = Number(b.dataset.chip);
-    const cur = T[T.target];
-    const max = T.target === 'ante' ? L.anteMax : L.ppMax;
-    const cost = T.target === 'ante' ? 2 * c : c;
-    b.disabled = cur + c > max || need + cost > me.chips;
-  });
-  $('[data-act="double"]', box).disabled = need === 0 || 2 * need > me.chips || T.ante * 2 > L.anteMax || T.pp * 2 > L.ppMax;
-}
-
-function renderHistoryThree() {
-  const h = $('#history');
-  h.textContent = '';
-  if (!S.three.history.length) {
-    const li = document.createElement('li');
-    li.className = 'muted';
-    li.textContent = 'Aquí verás tus últimas manos.';
-    h.appendChild(li);
-    return;
-  }
-  for (const r of S.three.history) {
-    const li = document.createElement('li');
-    li.innerHTML = `<b class="${r.net > 0 ? 'win' : r.net < 0 ? 'lose' : ''}">${signed(r.net)}</b> <span></span>`;
-    li.querySelector('span').textContent = `#${r.round} · ${r.folded ? 'Te retiraste con ' : ''}${r.hand}${r.dealer ? ` · crupier: ${r.dealer}` : ''}`;
-    h.appendChild(li);
-  }
-}
-
-// ------------------------------------------------------------ 5 cartas: mesa
-
+const BETTING = new Set(['bet1', 'bet2', 'preflop', 'flop', 'turn', 'river']);
 const PHASE_LABEL = {
   waiting: 'Esperando jugadores',
+  preflop: 'Preflop',
+  flop: 'Flop',
+  turn: 'Turn',
+  river: 'River',
   bet1: 'Primera ronda de apuestas',
   draw: 'Descarte',
   bet2: 'Segunda ronda de apuestas',
@@ -1090,10 +837,19 @@ function renderDraw(v) {
   const g = v.game;
   const me = v.players.find((p) => p.id === v.you);
   const s = g.seats.find((x) => x.id === v.you) || {};
-  if ($('#felt-paytable').dataset.mode !== 'draw') {
-    $('#felt-paytable').innerHTML = `<div><b>PÓKER DE CINCO CARTAS</b> SIN LÍMITE</div><div>ANTE ${g.rules.ante} · APUESTA MÍNIMA ${g.rules.minBet} · DESCARTE HASTA 3 (4 CON AS)</div>`;
-    $('#felt-paytable').dataset.mode = 'draw';
+  const felt = $('#felt-paytable');
+  if (felt.dataset.mode !== g.mode) {
+    felt.innerHTML =
+      g.mode === 'holdem'
+        ? `<div><b>TEXAS HOLD’EM</b> SIN LÍMITE · CIEGAS ${g.rules.smallBlind}/${g.rules.bigBlind}</div>`
+        : `<div><b>PÓKER DE CINCO CARTAS</b> SIN LÍMITE</div><div>ANTE ${g.rules.ante} · APUESTA MÍNIMA ${g.rules.minBet} · DESCARTE HASTA 3 (4 CON AS)</div>`;
+    felt.dataset.mode = g.mode;
   }
+  // Cartas comunes (Hold'em)
+  syncCards($('#board'), g.mode === 'holdem' ? g.board : [], 'md', {
+    delay: (i) => (i < 3 ? i * 140 : 0),
+    reveal: (i) => (i < 3 ? 200 + i * 140 : 150),
+  });
   if (g.hand !== S.draw.hand) {
     S.draw.hand = g.hand;
     S.draw.sel.clear();
@@ -1133,9 +889,11 @@ function renderDraw(v) {
   $('#my-hand-name').textContent = s.hand && !s.folded ? s.hand.desc : s.folded ? 'No vas en esta mano' : '';
   $('#my-hand-name').classList.toggle('strong', !!s.hand && s.hand.cat >= 2);
 
+  markBestCards(g);
+
   // Sonidos
   const pg = S.prev?.game;
-  if (pg?.mode === 'draw' && pg.hand === g.hand && g.pot > pg.pot) sfx.chips();
+  if (pg?.mode === g.mode && pg.hand === g.hand && g.pot > pg.pot) sfx.chips();
   if (g.turn === v.you && pg?.turn !== v.you) {
     sfx.turn();
     if (navigator.vibrate) navigator.vibrate(40);
@@ -1144,6 +902,20 @@ function renderDraw(v) {
 
   renderDrawControls(v, s, me);
   renderHistoryDraw(g);
+}
+
+/** En la enseñanza del Hold'em, resalta las 5 cartas con las que gana cada ganador. */
+function markBestCards(g) {
+  const keys = new Set();
+  if (g.mode === 'holdem' && g.phase === 'showdown' && g.best && g.results && !g.results.byFold) {
+    for (const pot of g.results.pots) for (const w of pot.winners) for (const c of g.best[w] || []) keys.add(`${c.r}${c.s}`);
+  }
+  const on = keys.size > 0;
+  $$('#board .card, #seats .card, #my-cards .card').forEach((c) => {
+    const hit = on && keys.has(c.dataset.key);
+    c.classList.toggle('best', hit);
+    c.classList.toggle('dim', on && !hit && !!c.closest('#board'));
+  });
 }
 
 function renderDrawControls(v, s, me) {
@@ -1231,7 +1003,7 @@ function updateDrawUI(v, s, me) {
   const watch = $('[data-watch]', box);
   if (watch) {
     const p = v.players.find((x) => x.id === g.turn);
-    watch.textContent = p ? `Turno de ${p.name}…` : g.phase === 'draw' ? 'Descartando…' : 'Un momento…';
+    watch.textContent = p ? `Turno de ${p.name}…` : g.phase === 'draw' ? 'Descartando…' : g.mode === 'holdem' ? 'Repartiendo…' : 'Un momento…';
   }
   const drawBtn = $('[data-act="draw"]', box);
   if (drawBtn) {
@@ -1284,11 +1056,11 @@ function tick() {
       t.textContent = '';
       return;
     }
-    const label = t.dataset.label || (g.mode === 'three' && g.phase === 'betting' ? 'Repartimos en' : 'Tiempo');
+    const label = t.dataset.label || 'Tiempo';
     t.textContent = `${label} ${secs} s`;
     t.classList.toggle('urgent', secs <= 5 && !t.dataset.label);
   });
-  if (g.mode === 'draw' && g.turn) {
+  if (g.turn) {
     const el = $(`#seats .seat[data-pid="${CSS.escape(g.turn)}"] .ptimer i`);
     if (el) {
       const total = g.phase === 'draw' ? 25000 : 30000;
@@ -1313,18 +1085,6 @@ function onControlsClick(e) {
   const t = e.target.closest('button');
   if (!t || t.disabled) return;
 
-  if (t.dataset.target) {
-    S.three.target = t.dataset.target;
-    renderThree(v);
-    return;
-  }
-  if (t.dataset.chip) {
-    const c = Number(t.dataset.chip);
-    S.three[S.three.target] += c;
-    sfx.chips();
-    renderThree(v);
-    return;
-  }
   if (t.dataset.q && g.me) {
     const o = g.me;
     const potAfterCall = g.pot + o.toCall;
@@ -1340,28 +1100,8 @@ function onControlsClick(e) {
     return;
   }
   switch (t.dataset.act) {
-    case 'clear':
-      S.three.ante = 0;
-      S.three.pp = 0;
-      renderThree(v);
-      break;
-    case 'double':
-      S.three.ante *= 2;
-      S.three.pp *= 2;
-      sfx.chips();
-      renderThree(v);
-      break;
-    case 'deal':
-      S.three.last = { ante: S.three.ante, pp: S.three.pp };
-      send({ t: 'bet', ante: S.three.ante, pp: S.three.pp });
-      break;
-    case 'play':
-      send({ t: 'decide', play: true });
-      sfx.chips();
-      break;
     case 'fold':
-      if (g.mode === 'three') send({ t: 'decide', play: false });
-      else send({ t: 'act', a: 'fold' });
+      send({ t: 'act', a: 'fold' });
       break;
     case 'check':
       send({ t: 'act', a: 'check' });
@@ -1412,15 +1152,6 @@ function onMyCardClick(e) {
   else S.draw.sel.add(i);
   sfx.flip();
   renderDraw(S.view);
-}
-
-function onSpotClick(e) {
-  const spot = e.target.closest('[data-spot]');
-  if (!spot || spot.dataset.spot === 'play') return;
-  const v = S.view;
-  if (v?.game?.mode !== 'three' || v.game.phase !== 'betting') return;
-  S.three.target = spot.dataset.spot;
-  renderThree(v);
 }
 
 // ------------------------------------------------------------------ inicio
@@ -1496,7 +1227,7 @@ function setupTilt() {
     if (e.pointerType !== 'mouse') return;
     const card = e.target.closest ? e.target.closest('.card.up') : null;
     if (card !== current) reset();
-    if (!card || !card.closest('#my-cards, #home-fan, .tut-cards, .mode-mini, #dealer-cards')) return;
+    if (!card || !card.closest('#my-cards, #home-fan, .tut-cards, .mode-mini, #board')) return;
     const r = card.getBoundingClientRect();
     const px = (e.clientX - r.left) / r.width;
     const py = (e.clientY - r.top) / r.height;
@@ -1591,7 +1322,6 @@ async function init() {
   $('#controls').addEventListener('click', onControlsClick);
   $('#controls').addEventListener('input', onRangeInput);
   $('#my-cards').addEventListener('click', onMyCardClick);
-  $('#bet-spots').addEventListener('click', onSpotClick);
   $('#btn-chat').addEventListener('click', () => (S.drawerOpen ? closeDrawer() : openDrawer()));
   $('#drawer-close').addEventListener('click', closeDrawer);
   $$('.drawer-tabs [data-tab]').forEach((b) =>
@@ -1629,7 +1359,7 @@ async function init() {
       const b = $(sel, box);
       if (b && !b.disabled) b.click();
     };
-    if (e.key === 'Enter') click('[data-act="deal"], [data-act="play"], [data-act="draw"], [data-act="check"], [data-act="call"]');
+    if (e.key === 'Enter') click('[data-act="draw"], [data-act="check"], [data-act="call"]');
     if (e.key === 'Escape') closeDrawer();
   });
 

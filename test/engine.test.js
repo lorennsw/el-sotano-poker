@@ -2,12 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { newDeck } from '../shared/cards.js';
-import { evaluate3, CAT3, dealerQualifies, shouldPlay } from '../shared/eval3.js';
-import { evaluate5, CAT5 } from '../shared/eval5.js';
-import { settleThree } from '../shared/three.js';
+import { evaluate5, evaluate7, describeHole, CAT5 } from '../shared/eval5.js';
+import { HoldemGame } from '../shared/holdem.js';
 import { computePots, DrawGame } from '../shared/draw.js';
 import { Room } from '../shared/room.js';
-import { drawPlan } from '../shared/bots.js';
+import { drawPlan, preflopStrength } from '../shared/bots.js';
 
 const C = (str) =>
   str.split(' ').map((t) => {
@@ -18,41 +17,6 @@ const C = (str) =>
   });
 
 // ------------------------------------------------------------ evaluadores
-
-test('3 cartas: frecuencias exactas de las 22.100 manos', () => {
-  const d = newDeck();
-  const counts = new Array(6).fill(0);
-  for (let a = 0; a < 52; a++)
-    for (let b = a + 1; b < 52; b++)
-      for (let c = b + 1; c < 52; c++) counts[evaluate3([d[a], d[b], d[c]]).cat]++;
-  assert.deepEqual(counts, [16440, 3744, 1096, 720, 52, 48]);
-});
-
-test('3 cartas: orden y casos límite', () => {
-  const v = (s) => evaluate3(C(s)).score;
-  assert.ok(v('Ah 2c 3d') < v('2h 3c 4d'), 'A-2-3 es la escalera más baja');
-  assert.ok(v('Qh Kc Ad') > v('Jh Qc Kd'), 'Q-K-A es la escalera más alta');
-  assert.ok(v('2h 3c 4d') > v('Ah Kh 9h'), 'escalera gana a color');
-  assert.ok(v('2h 2c 2d') > v('Qh Kc Ad'), 'trío gana a escalera');
-  assert.ok(v('2h 3h 4h') > v('Ah Ac Ad'), 'escalera de color gana a trío');
-  assert.ok(v('Kh Kc 2d') > v('Qh Qc Ad'), 'pareja mayor gana');
-  assert.ok(v('Kh Kc 5d') > v('Ks Kd 4d'), 'desempate por kicker');
-  assert.equal(v('Kh Kc 5d'), v('Ks Kd 5h'), 'empate exacto');
-  assert.equal(evaluate3(C('Ah 2h 3h')).cat, CAT3.STRAIGHT_FLUSH);
-  assert.equal(evaluate3(C('Ah Kh 2h')).cat, CAT3.FLUSH, 'K-A-2 no es escalera');
-});
-
-test('3 cartas: calificación del crupier y estrategia Q-6-4', () => {
-  assert.equal(dealerQualifies(evaluate3(C('Qh 3c 2d'))), true);
-  assert.equal(dealerQualifies(evaluate3(C('Jh 9c 7d'))), false);
-  assert.equal(dealerQualifies(evaluate3(C('2h 2c 3d'))), true);
-  assert.equal(shouldPlay(evaluate3(C('Qh 6c 4d'))), true);
-  assert.equal(shouldPlay(evaluate3(C('Qh 6c 3d'))), false);
-  assert.equal(shouldPlay(evaluate3(C('Qh 5c 4d'))), false);
-  assert.equal(shouldPlay(evaluate3(C('Qh 7c 2d'))), true);
-  assert.equal(shouldPlay(evaluate3(C('Kh 3c 2d'))), true);
-  assert.equal(shouldPlay(evaluate3(C('Jh 9c 8d'))), false);
-});
 
 test('5 cartas: frecuencias exactas de las 2.598.960 manos y 7.462 clases', () => {
   const d = newDeck();
@@ -99,43 +63,6 @@ test('5 cartas: orden y descripciones', () => {
 });
 
 // -------------------------------------------------------- pagos 3 cartas
-
-test('3 cartas: liquidación de apuestas', () => {
-  const dealerQ = evaluate3(C('Qs 8d 3c')); // califica con Reina
-  const dealerNo = evaluate3(C('Js 8d 3c')); // no califica
-  const mk = (cards, ante, pp, play, folded = false) => ({ ante, pp, play, folded, ev: evaluate3(C(cards)) });
-
-  // Retirarse pierde Ante y Pair Plus
-  assert.deepEqual(
-    { back: settleThree(mk('2h 7c 9d', 10, 5, 0, true), dealerQ, true).back, net: settleThree(mk('2h 7c 9d', 10, 5, 0, true), dealerQ, true).net },
-    { back: 0, net: -15 },
-  );
-  // Crupier no califica: Ante 1:1, Play se devuelve
-  let r = settleThree(mk('Kh 7c 2d', 10, 0, 10), dealerNo, false);
-  assert.equal(r.net, 10);
-  // Gana al crupier: Ante y Play 1:1
-  r = settleThree(mk('Kh 9c 2d', 10, 0, 10), dealerQ, true);
-  assert.equal(r.net, 20);
-  // Pierde contra el crupier
-  r = settleThree(mk('Qh 6c 4d', 10, 0, 10), dealerQ, true);
-  assert.equal(r.net, -20);
-  // Empate exacto
-  r = settleThree(mk('Qh 8c 3s', 10, 0, 10), dealerQ, true);
-  assert.equal(r.net, 0);
-  // Trío: bono Ante 4:1 + gana Ante/Play + Pair Plus 30:1
-  r = settleThree(mk('7h 7c 7d', 10, 5, 10), dealerQ, true);
-  assert.equal(r.net, 40 + 10 + 10 + 150);
-  // Escalera de color pierde?? imposible contra Q alta; probamos bono con crupier mejor
-  const dealerSF = evaluate3(C('Qd Kd Ad'));
-  r = settleThree(mk('2s 3s 4s', 10, 10, 10), dealerSF, true);
-  assert.equal(r.net, 50 - 10 - 10 + 400, 'el bono Ante y el Pair Plus se pagan aunque gane el crupier');
-  // Sólo Pair Plus, sin pareja
-  r = settleThree(mk('2s 9h Kd', 0, 25, 0), dealerQ, true);
-  assert.equal(r.net, -25);
-  // Escalera: bono 1:1, PP 6:1, crupier no califica
-  r = settleThree(mk('9s Th Jd', 20, 10, 20), dealerNo, false);
-  assert.equal(r.net, 20 + 20 + 0 + 60);
-});
 
 // --------------------------------------------------------- botes 5 cartas
 
@@ -292,34 +219,153 @@ test('5 cartas: descarte de 4 sólo con As', () => {
   assert.equal(g.phase, 'bet2');
 });
 
-test('3 cartas: rondas completas con un humano y bots', () => {
-  const room = new TestRoom({ mode: 'three' });
-  const me = room.addHuman('Yo').player;
-  room.addBot();
-  room.addBot();
+// ------------------------------------------------------------- Texas Hold'em
+
+test("Hold'em: la mejor mano de 5 entre 7 cartas", () => {
+  const d = (s) => evaluate7(C(s)).desc;
+  assert.equal(d('Ah Kh 2c 7h 9h Qh 3d'), 'Color al As', 'elige el color aunque haya 6 corazones');
+  assert.equal(d('5c 4d As 2h 3s Kd Kc'), 'Escalera al 5', 'escalera gana a pareja');
+  assert.equal(d('9c 9d 9s 4h 4s 4c 2d'), 'Full de Nueves y Cuatros', 'con dos tríos, full con el mayor');
+  assert.equal(d('Ac Ad Kh Kd Qs Qc 2h'), 'Doble pareja: Ases y Reyes', 'tres parejas: cuentan las dos mayores');
+  assert.equal(d('Th Jh Qh Kh Ah 2c 3d'), 'Escalera real');
+  assert.equal(d('6s 7s 8s 9s Ts Js 2d'), 'Escalera de color a la Jota');
+  // Kicker: la quinta carta decide
+  const a = evaluate7(C('Ah Kc 7d 7s 2h 3c 9d'));
+  const b = evaluate7(C('Ad Qc 7c 7h 2s 3d 9h'));
+  assert.ok(a.score > b.score, 'misma pareja: gana el kicker');
+  // La mesa juega: empate exacto
+  const t1 = evaluate7(C('2c 3d Ah Kh Qh Jh Th'));
+  const t2 = evaluate7(C('4s 5s Ah Kh Qh Jh Th'));
+  assert.equal(t1.score, t2.score);
+  assert.equal(evaluate7(C('Ah Kh 2c 7h 9h Qh 3d')).cards.length, 5);
+});
+
+test("Hold'em: descripción de las cartas propias y fuerza preflop", () => {
+  assert.equal(describeHole(C('Ah Kh')).desc, 'A-K del mismo palo');
+  assert.equal(describeHole(C('7c 7d')).desc, 'Pareja de Sietes');
+  assert.equal(describeHole(C('2c 9d')).desc, '9-2');
+  assert.ok(preflopStrength(C('Ac Ad')) > preflopStrength(C('Ks Kh')));
+  assert.ok(preflopStrength(C('Ah Kh')) > preflopStrength(C('Ah Kd')));
+  assert.ok(preflopStrength(C('Kh Qh')) > preflopStrength(C('7c 2d')));
+});
+
+function holdemRoom(names, chips) {
+  const room = new TestRoom({ mode: 'holdem' });
+  const ps = names.map((n) => room.addHuman(n).player);
+  if (chips) ps.forEach((p, i) => (p.chips = chips[i]));
   room.startGame();
-  const g = room.game;
-  const sum0 = () => room.players.reduce((a, p) => a + p.chips, 0);
-  for (let round = 0; round < 50; round++) {
-    assert.equal(g.phase, 'betting');
-    if (me.chips < 30) room.handle(me.id, { t: 'rebuy' });
-    assert.match(room.handle(me.id, { t: 'bet', ante: 10, pp: me.chips }) || '', /fichas|Pair Plus/);
-    assert.equal(room.handle(me.id, { t: 'bet', ante: 10, pp: 5 }), null);
-    assert.equal(me.chips >= 10, true);
-    while (g.phase === 'betting') room.step();
-    assert.equal(g.phase, 'deciding');
-    const view = room.view(me.id).game;
-    assert.equal(view.seats.find((s) => s.id === me.id).cards.length, 3);
-    assert.equal(view.seats.find((s) => s.id !== me.id).cards, null, 'no se ven cartas ajenas');
-    assert.deepEqual(view.dealer.cards, [null, null, null], 'el crupier va tapado');
-    const play = round % 2 === 0;
-    assert.equal(room.handle(me.id, { t: 'decide', play }), null);
-    while (g.phase === 'deciding') room.step();
-    assert.equal(g.phase, 'showdown');
-    const res = room.view(me.id).game.seats.find((s) => s.id === me.id).result;
-    assert.ok(res && Number.isInteger(res.net));
-    if (!play) assert.equal(res.net, -15);
-    room.step(); // siguiente ronda
-    assert.ok(sum0() > 0);
+  return { room, g: room.game, ps };
+}
+
+test("Hold'em: ciegas, orden de habla y opción de la ciega grande (3 jugadores)", () => {
+  const { room, g, ps } = holdemRoom(['Ana', 'Beto', 'Cris']);
+  const [a, b, c] = ps;
+  assert.ok(g instanceof HoldemGame);
+  assert.equal(g.buttonPid, a.id);
+  assert.equal(g.sbPid, b.id, 'ciega pequeña a la izquierda del botón');
+  assert.equal(g.bbPid, c.id, 'ciega grande después');
+  assert.equal(g.ps.get(b.id).bet, 5);
+  assert.equal(g.ps.get(c.id).bet, 10);
+  assert.equal(g.pot, 15);
+  assert.equal(g.phase, 'preflop');
+  assert.equal(g.turn, a.id, 'preflop habla primero el de la izquierda de la grande');
+  for (const s of g.ps.values()) assert.equal(s.cards.length, 2);
+  assert.notEqual(room.handle(a.id, { t: 'act', a: 'check' }), null, 'no se puede pasar frente a la ciega');
+  assert.equal(room.handle(a.id, { t: 'act', a: 'call' }), null);
+  assert.equal(room.handle(b.id, { t: 'act', a: 'call' }), null);
+  assert.equal(g.turn, c.id, 'la ciega grande tiene su opción');
+  assert.equal(g.options(c.id).canCheck, true);
+  assert.equal(g.options(c.id).canRaise, true);
+  assert.equal(room.handle(c.id, { t: 'act', a: 'check' }), null);
+  assert.equal(g.turn, null, 'pausa antes del flop');
+  room.step();
+  assert.equal(g.phase, 'flop');
+  assert.equal(g.board.length, 3);
+  assert.equal(g.turn, b.id, 'tras el flop habla primero la ciega pequeña');
+  assert.equal(g.pot, 30);
+});
+
+test("Hold'em: mano a mano el botón pone la pequeña y habla primero antes del flop", () => {
+  const { room, g, ps } = holdemRoom(['Ana', 'Beto']);
+  const [a, b] = ps;
+  assert.equal(g.buttonPid, a.id);
+  assert.equal(g.sbPid, a.id);
+  assert.equal(g.bbPid, b.id);
+  assert.equal(g.turn, a.id, 'preflop: el botón (pequeña) primero');
+  room.handle(a.id, { t: 'act', a: 'call' });
+  room.handle(b.id, { t: 'act', a: 'check' });
+  room.step();
+  assert.equal(g.phase, 'flop');
+  assert.equal(g.turn, b.id, 'después del flop: la grande primero');
+});
+
+test("Hold'em: si todos se retiran, la ciega grande cobra sin enseñar", () => {
+  const { room, g, ps } = holdemRoom(['Ana', 'Beto', 'Cris']);
+  const [a, b, c] = ps;
+  room.handle(a.id, { t: 'act', a: 'fold' });
+  room.handle(b.id, { t: 'act', a: 'fold' });
+  assert.equal(g.phase, 'showdown');
+  assert.equal(g.results.byFold, true);
+  assert.equal(c.chips, 1005, 'recupera su ciega y gana la pequeña');
+  assert.equal(b.chips, 995);
+});
+
+test("Hold'em: all-in preflop reparte la mesa entera y paga el bote secundario", () => {
+  const { room, g, ps } = holdemRoom(['Ana', 'Beto', 'Cris'], [1000, 1000, 100]);
+  const [a, b, c] = ps;
+  room.handle(a.id, { t: 'act', a: 'raise', to: 1000 }); // all-in
+  room.handle(b.id, { t: 'act', a: 'call' }); // all-in
+  room.handle(c.id, { t: 'act', a: 'call' }); // all-in por 100
+  let guard = 0;
+  while (g.phase !== 'showdown' && guard++ < 20) room.step();
+  assert.equal(g.phase, 'showdown');
+  assert.equal(g.board.length, 5);
+  assert.equal(a.chips + b.chips + c.chips, 2100, 'no se crean ni pierden fichas');
+  const total = g.results.pots.reduce((x, p) => x + p.amount, 0);
+  assert.equal(total, 2100);
+  assert.equal(g.results.pots[0].amount, 300, 'bote principal: 100 de cada uno');
+  const seen = new Set();
+  for (const card of [...g.board, ...[...g.ps.values()].flatMap((s) => s.cards)]) {
+    const k = card.r + card.s;
+    assert.ok(!seen.has(k), 'carta repetida');
+    seen.add(k);
+  }
+});
+
+test("Hold'em: 400 manos entre bots sin errores, sin crear fichas y sin repetir cartas", () => {
+  const room = new TestRoom({ mode: 'holdem' });
+  for (let i = 0; i < 6; i++) room.addBot();
+  room.players.forEach((p, i) => (p.chips = [40, 75, 300, 1000, 12, 520][i]));
+  let before = null;
+  let checked = 0;
+  const orig = HoldemGame.prototype.startHand;
+  const sum = () => room.players.reduce((a, p) => a + p.chips, 0);
+  HoldemGame.prototype.startHand = function (players) {
+    before = sum();
+    orig.call(this, players);
+  };
+  try {
+    room.startGame();
+    let guard = 0;
+    while (room.game.hand < 400 && guard++ < 300000) {
+      const g = room.game;
+      const wasShow = g.phase === 'showdown';
+      room.step();
+      if (!wasShow && g.phase === 'showdown') {
+        assert.equal(sum(), before, `fichas conservadas en la mano ${g.hand}`);
+        const seen = new Set();
+        for (const card of [...g.board, ...[...g.ps.values()].flatMap((s) => s.cards)]) {
+          const k = card.r + card.s;
+          assert.ok(!seen.has(k), 'carta repetida');
+          seen.add(k);
+        }
+        if (!g.results.byFold) assert.equal(g.board.length, 5, 'en la enseñanza la mesa está completa');
+        for (const p of room.players) assert.ok(p.chips >= 0);
+        checked++;
+      }
+    }
+    assert.ok(checked >= 399, `manos comprobadas: ${checked}`);
+  } finally {
+    HoldemGame.prototype.startHand = orig;
   }
 });

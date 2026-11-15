@@ -1,8 +1,7 @@
 // Personajes del garito y su forma de jugar.
 
 import { randomInt } from './cards.js';
-import { shouldPlay } from './eval3.js';
-import { evaluate5, CAT5 } from './eval5.js';
+import { evaluate5, evaluate7, CAT5 } from './eval5.js';
 
 export const BOT_NAMES = [
   'El Tuerto', 'La Viuda', 'Don Ramiro', 'Chencho', 'Madame Fortuna', 'El Profe',
@@ -20,25 +19,6 @@ function chance(p) {
 }
 
 const round5 = (x) => Math.max(5, Math.round(x / 5) * 5);
-
-// ---------- Póker de 3 cartas ----------
-
-export function botThreeBet(chips) {
-  const choices = [10, 10, 25, 25, 50, 100];
-  let ante = choices[randomInt(choices.length)];
-  let pp = chance(0.55) ? [5, 10, 25][randomInt(3)] : 0;
-  while (ante > 5 && 2 * ante + pp > chips) ante = ante > 25 ? ante / 2 : 5;
-  if (2 * ante + pp > chips) pp = 0;
-  if (2 * ante > chips) return { ante: 0, pp: chips >= 5 ? 5 : 0 };
-  return { ante: round5(ante), pp };
-}
-
-/** Los bots usan la estrategia óptima (Q-6-4) con un pequeño margen de error humano. */
-export function botThreeDecide(ev) {
-  const best = shouldPlay(ev);
-  if (chance(0.04)) return !best;
-  return best;
-}
 
 // ---------- Póker de 5 cartas (descarte) ----------
 
@@ -97,7 +77,14 @@ export function drawPlan(cards) {
  * info: { cards, preDraw, toCall, pot, chips, bet, currentBet, minTo, maxTo, canRaise, canCheck, drewByOthers }
  */
 export function botDrawAction(info) {
-  const s = drawStrength(info.cards, info.preDraw);
+  return botDecide(drawStrength(info.cards, info.preDraw), info);
+}
+
+/**
+ * Decisión común a los dos juegos a partir de una fuerza de mano s (0..1).
+ * info.cheapCall: hasta cuánto se iguala "por ver" con una mano jugable (ciegas del Hold'em).
+ */
+export function botDecide(s, info) {
   const bluff = chance(0.06);
   const potAfter = info.pot + info.toCall;
   const odds = info.toCall > 0 ? info.toCall / potAfter : 0;
@@ -113,11 +100,70 @@ export function botDrawAction(info) {
     if (info.canRaise && s > 0.5 && chance(0.4)) return { a: 'raise', to: raiseTo() };
     return { a: 'check' };
   }
-  // Ir all-in por poco dinero relativo no asusta tanto
   const commit = info.toCall / Math.max(1, info.chips + info.bet);
   if (s >= 0.6) return { a: 'call' };
+  if (info.cheapCall && info.toCall <= info.cheapCall && s > 0.3) return { a: 'call' };
   if (s > odds + 0.12 && commit < 0.45) return { a: 'call' };
   if (info.toCall <= info.pot * 0.15 && s > 0.15) return { a: 'call' };
   if (bluff && commit < 0.2) return { a: 'call' };
   return { a: 'fold' };
+}
+
+// ---------- Texas Hold'em ----------
+
+/** Fuerza de las dos cartas propias antes del flop (0..1). */
+export function preflopStrength([a, b]) {
+  const hi = Math.max(a.r, b.r);
+  const lo = Math.min(a.r, b.r);
+  if (a.r === b.r) return 0.5 + ((hi - 2) / 12) * 0.45; // 22 → 0,50 · AA → 0,95
+  let s = ((hi - 2) / 12) * 0.35 + ((lo - 2) / 12) * 0.2;
+  if (a.s === b.s) s += 0.06;
+  const gap = hi - lo;
+  if (gap === 1) s += 0.05;
+  else if (gap === 2) s += 0.02;
+  if (hi === 14) s += 0.06;
+  return Math.min(1, s);
+}
+
+/** Fuerza tras el flop: categoría de la mejor mano de 7 y proyectos de color/escalera. */
+export function boardStrength(hole, board) {
+  const ev = evaluate7([...hole, ...board]);
+  let s;
+  switch (ev.cat) {
+    case CAT5.HIGH: s = 0.08 + ((ev.tb[0] - 7) / 7) * 0.12; break;
+    case CAT5.PAIR: {
+      // Una pareja que sólo está en la mesa la tiene todo el mundo
+      const onBoard = board.filter((c) => c.r === ev.tb[0]).length === 2;
+      s = onBoard ? 0.15 : 0.32 + ((ev.tb[0] - 2) / 12) * 0.3;
+      break;
+    }
+    case CAT5.TWO_PAIR: s = 0.62; break;
+    case CAT5.TRIPS: s = 0.78; break;
+    case CAT5.STRAIGHT: s = 0.85; break;
+    case CAT5.FLUSH: s = 0.9; break;
+    case CAT5.FULL_HOUSE: s = 0.95; break;
+    default: s = 0.99;
+  }
+  if (board.length < 5 && ev.cat <= CAT5.PAIR) {
+    const all = [...hole, ...board];
+    for (const suit of ['s', 'h', 'd', 'c']) {
+      const n = all.filter((c) => c.s === suit).length;
+      if (n >= 4 && hole.some((c) => c.s === suit)) s = Math.max(s, 0.42);
+    }
+    let mask = 0;
+    for (const c of all) {
+      mask |= 1 << c.r;
+      if (c.r === 14) mask |= 1 << 1;
+    }
+    for (let lo = 1; lo <= 10; lo++) {
+      const w = (mask >> lo) & 0b1111;
+      if (w === 0b1111 && lo >= 2 && lo <= 10) s = Math.max(s, 0.36);
+    }
+  }
+  return s;
+}
+
+export function botHoldemAction(info) {
+  const s = info.board.length < 3 ? preflopStrength(info.hole) : boardStrength(info.hole, info.board);
+  return botDecide(s, { ...info, cheapCall: info.board.length < 3 ? info.bigBlind * 3 : 0 });
 }

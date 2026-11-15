@@ -9,104 +9,72 @@ const practice = (mode, label) =>
   `<div class="tut-cta"><button class="btn btn-gold" data-practice="${mode}">${label}</button></div>`;
 
 const TUTORIAL = {
-  three: {
-    label: 'Póker de 3 Cartas',
+  holdem: {
+    label: 'Texas Hold’em',
     slides: [
       {
-        h: 'La casa contra ti',
+        h: 'El rey de los pókers',
         body: `
-          <p class="lead">En el <b>Póker de 3 Cartas</b> no compites contra los demás jugadores: <b>cada uno juega su mano contra el crupier</b>. Si tu mano de tres cartas es mejor que la suya, cobras.</p>
-          <p>Es el juego estrella del local: rápido (una mano dura menos de un minuto), fácil de aprender y con premios gordos si ligas un trío o una escalera de color.</p>
-          <div class="tut-row">${hand('Qh Kh Ah', 'Escalera de color máxima: la mejor mano posible', 'md')}</div>`,
+          <p class="lead">En el <b>Texas Hold’em</b> juegas contra los demás jugadores. Cada uno recibe <b>2 cartas tapadas</b> y en el centro salen <b>5 cartas comunes</b> que comparte toda la mesa.</p>
+          <p>Gana quien forme la mejor mano de 5 cartas combinando sus 2 cartas con las 5 de la mesa: puedes usar las dos tuyas, solo una o ninguna. O gana el último que quede si los demás se retiran.</p>
+          <div class="tut-row">${hand('As Kh', 'Tus cartas')}<div class="vs">+</div>${hand('Qd Jc Ts 4h 2s', 'La mesa')}</div>
+          <p class="tip">Con esas 7 cartas tu mano es <b>escalera al As</b>: A-K tuyos y Q-J-10 de la mesa.</p>`,
       },
       {
-        h: 'Paso 1 · Haz tus apuestas',
+        h: 'El botón y las ciegas',
         body: `
-          <p>Antes de ver las cartas, pon fichas en las casillas del tapete:</p>
-          <div class="tut-spots">
-            <div class="tut-spot"><span class="mini-spot">ANTE</span><p><b>Ante</b> — la apuesta principal: tu mano contra la del crupier.</p></div>
-            <div class="tut-spot"><span class="mini-spot pp">PAIR<br>PLUS</span><p><b>Pair Plus</b> — apuesta opcional a que te salga <b>pareja o algo mejor</b>. Se cobra pase lo que pase con el crupier.</p></div>
-          </div>
-          <p>Puedes jugar las dos o sólo una. Cada una va de <b>5 a 500</b> fichas.</p>
-          <p class="tip">🎯 <b>En la mesa:</b> toca la casilla (ANTE o PAIR PLUS), luego las fichas, y pulsa <b>REPARTIR</b>. Necesitas tener guardado otro tanto como el Ante, por si decides jugar.</p>`,
-      },
-      {
-        h: 'Paso 2 · Mira tus cartas y decide',
-        body: `
-          <p>Recibes 3 cartas boca arriba para ti; el crupier recibe 3 tapadas. Si pusiste Ante, decides:</p>
           <ul class="tut-list">
-            <li><b class="t-gold">JUGAR</b> — pones en la casilla <b>PLAY</b> lo mismo que tienes en el Ante y sigues en la mano.</li>
-            <li><b class="t-red">RETIRARSE</b> — abandonas y pierdes el Ante <i>y</i> el Pair Plus.</li>
-          </ul>
-          <div class="tut-row">${hand('Kd 9c 4s', 'Rey alto: juega')}${hand('Jh 8d 3c', 'Jota alta: retírate')}</div>`,
+            <li>El botón <span class="dealer-chip">D</span> marca quién reparte y rota una silla cada mano.</li>
+            <li>A su izquierda, la <b>ciega pequeña</b> (<b>SB</b>) pone 5 fichas obligatorias, y la siguiente, la <b>ciega grande</b> (<b>BB</b>), pone 10.</li>
+            <li>Las ciegas hacen que siempre haya algo que ganar. Como el botón rota, todos las pagan por turnos.</li>
+            <li>Mano a mano (2 jugadores), el botón pone la ciega pequeña.</li>
+          </ul>`,
       },
       {
-        h: 'Paso 3 · ¿Califica el crupier?',
+        h: 'Preflop: tus dos cartas',
         body: `
-          <p>El crupier sólo "juega" si tiene <b>Reina alta o mejor</b>. Eso cambia cómo se paga:</p>
+          <p>Con tus 2 cartas en la mano empieza la primera ronda de apuestas. Habla primero el jugador a la <b>izquierda de la ciega grande</b>, y cada uno puede:</p>
           <table class="tut-table">
-            <tr><th>Situación</th><th>Ante</th><th>Play</th></tr>
-            <tr><td>El crupier <b>no califica</b></td><td class="win">paga 1:1</td><td>se devuelve</td></tr>
-            <tr><td>Califica y <b>le ganas</b></td><td class="win">paga 1:1</td><td class="win">paga 1:1</td></tr>
-            <tr><td>Califica y <b>te gana</b></td><td class="lose">pierdes</td><td class="lose">pierdes</td></tr>
-            <tr><td>Empate exacto</td><td>se devuelve</td><td>se devuelve</td></tr>
+            <tr><td><b>No ir</b></td><td>Te retiras sin poner nada más.</td></tr>
+            <tr><td><b>Igualar</b></td><td>Pones lo mismo que la ciega grande (o que la última subida).</td></tr>
+            <tr><td><b>Subir</b></td><td>Aumentas la apuesta: al menos el doble de la ciega grande la primera vez.</td></tr>
           </table>
-          <div class="tut-row">${hand('Qs 7d 2c', 'Califica (justo)')}${hand('Jh 9s 8d', 'No califica')}</div>`,
+          <p class="small">Si todos igualan, la ciega grande puede <b>pasar</b> o todavía <b>subir</b>: es su "opción".</p>`,
       },
       {
-        h: 'Los bonos: donde está el dinero',
+        h: 'Flop, turn y river',
         body: `
-          <div class="tut-cols">
-            <div>
-              <h4>Bono Ante</h4>
-              <p class="small">Si juegas, se paga <b>aunque el crupier te gane</b> o no califique.</p>
-              <table class="tut-table pay">
-                <tr><td>Escalera de color</td><td>5 : 1</td></tr>
-                <tr><td>Trío</td><td>4 : 1</td></tr>
-                <tr><td>Escalera</td><td>1 : 1</td></tr>
-              </table>
-            </div>
-            <div>
-              <h4>Pair Plus</h4>
-              <p class="small">Sólo cuenta tu mano, no la del crupier. Si te retiras, se pierde.</p>
-              <table class="tut-table pay">
-                <tr><td>Escalera de color</td><td>40 : 1</td></tr>
-                <tr><td>Trío</td><td>30 : 1</td></tr>
-                <tr><td>Escalera</td><td>6 : 1</td></tr>
-                <tr><td>Color</td><td>4 : 1</td></tr>
-                <tr><td>Pareja</td><td>1 : 1</td></tr>
-              </table>
-            </div>
-          </div>
-          <p class="tip">"4 : 1" significa que por cada ficha apostada ganas 4 y además recuperas la tuya.</p>`,
+          <p>Después salen las cartas comunes, en tres tandas. Tras cada una hay otra ronda de apuestas:</p>
+          <div class="tut-row">${hand('9h 7c 2d', 'Flop: 3 cartas')}${hand('Ks', 'Turn: la 4.ª')}${hand('9s', 'River: la 5.ª')}</div>
+          <p>Desde el flop habla primero el primer jugador activo a la <b>izquierda del botón</b>. Si nadie ha apostado puedes <b>pasar</b>, o <b>apostar</b> (mínimo 10). Sin límite: puedes ir <b>all-in</b> cuando quieras.</p>`,
       },
       {
-        h: 'Ojo: aquí la escalera vale MÁS que el color',
+        h: 'Enseñanza y desempates',
         body: `
-          <p>Con sólo tres cartas es más fácil ligar color que escalera, así que el orden cambia respecto al póker clásico:</p>
-          <table class="tut-table rank3">
-            <tr><td>1</td><td>Escalera de color</td><td>${hand('9h Th Jh', '', 'xs')}</td><td>0,22 %</td></tr>
-            <tr><td>2</td><td>Trío</td><td>${hand('Kc Kd Ks', '', 'xs')}</td><td>0,24 %</td></tr>
-            <tr><td>3</td><td>Escalera</td><td>${hand('4c 5d 6s', '', 'xs')}</td><td>3,26 %</td></tr>
-            <tr><td>4</td><td>Color</td><td>${hand('2s 8s Js', '', 'xs')}</td><td>4,96 %</td></tr>
-            <tr><td>5</td><td>Pareja</td><td>${hand('Ac Ad 7s', '', 'xs')}</td><td>16,94 %</td></tr>
-            <tr><td>6</td><td>Carta alta</td><td>${hand('Kh 9d 3c', '', 'xs')}</td><td>74,39 %</td></tr>
-          </table>
-          <p class="small">El As vale alto o bajo: <b>Q-K-A</b> es la escalera más alta y <b>A-2-3</b> la más baja. K-A-2 no es escalera.</p>`,
+          <p>Si tras el river quedan dos o más, se enseñan las cartas: <b>la mejor mano de 5 de 7 se lleva el bote</b>. En la mesa verás resaltadas las 5 cartas ganadoras.</p>
+          <div class="tut-row">${hand('Ac Kd', 'Tú')}${hand('Ad 7c 7h 3s 2d', 'La mesa')}${hand('Ah Qs', 'Rival')}</div>
+          <p class="example">Los dos tenéis doble pareja de Ases y Sietes, pero tu quinta carta (el Rey) gana a su Reina. Esa carta que desempata se llama <b>kicker</b>.</p>
+          <p class="small">Si las 5 mejores cartas son iguales (por ejemplo, cuando la mesa juega para los dos), el bote se reparte. Los palos nunca desempatan.</p>`,
       },
       {
-        h: 'La estrategia del profesional: Q-6-4',
+        h: 'All-in y botes secundarios',
         body: `
-          <p class="lead">Regla de oro: <b>juega con Reina-Seis-Cuatro o mejor</b>, retírate con peor.</p>
-          <div class="tut-row">
-            ${hand('Qc 6h 4d', '✅ Juega (justo el mínimo)')}
-            ${hand('Qc 6h 3d', '❌ Retírate')}
-            ${hand('Qs 5d 4h', '❌ Retírate')}
-            ${hand('2c 2h 9s', '✅ Cualquier pareja: juega')}
-          </div>
-          <p>Con esta estrategia la ventaja de la casa es del <b>3,37 %</b> en Ante/Play. El Pair Plus con esta tabla (1-4-6-30-40) tiene un <b>2,32 %</b>.</p>
-          <p class="tip">💡 En la mesa, cuando tengas que decidir, el crupier te susurrará lo que haría un profesional.</p>
-          ${practice('three', 'Practicar en la mesa ▶')}`,
+          <p>Si alguien va all-in con menos fichas, solo puede ganar lo que él puso de cada rival. Lo que se apueste por encima forma un <b>bote secundario</b> para los demás.</p>
+          <p>Cuando ya nadie puede apostar más (todos all-in), las cartas comunes que faltan salen solas, una detrás de otra.</p>
+          <p class="small">El juego calcula los botes por ti. Las fichas impares de un reparto van al primer ganador a la izquierda del botón.</p>`,
+      },
+      {
+        h: 'Consejos de la casa',
+        body: `
+          <ul class="tut-list">
+            <li><b>Manos iniciales top</b>: A-A, K-K, Q-Q y A-K. Con ellas, sube.</li>
+            <li><b>La posición vale oro</b>: hablar el último (en el botón) te deja ver qué hacen los demás antes de decidir.</li>
+            <li><b>Regla del 4 y el 2</b>: cuenta las cartas que te ligan la mano (tus "outs"). Multiplícalas por 4 en el flop o por 2 en el turn y tendrás el porcentaje aproximado de ligar.</li>
+            <li>Proyecto de color en el flop: 9 outs, así que un 35 % de ligarlo antes del river.</li>
+            <li>Con una pareja en la mano, ligas trío en el flop una de cada 8 veces.</li>
+            <li>Si en la mesa hay 4 cartas del mismo palo, cuidado: cualquiera con una de ese palo tiene color.</li>
+          </ul>
+          ${practice('holdem', 'Practicar en la mesa ▶')}`,
       },
     ],
   },
@@ -198,20 +166,7 @@ const TUTORIAL = {
             <tr><td>Pareja</td><td>${hand('Qc Qh 8d 5s 2c', '', 'xs')}</td><td>42,26 %</td></tr>
             <tr><td>Carta alta</td><td>${hand('Ac Jd 8h 5s 3c', '', 'xs')}</td><td>50,12 %</td></tr>
           </table>
-          <p class="small">Empates: se comparan las cartas de más valor del grupo (el trío del full, la pareja mayor…) y después las sueltas. El As cierra 10-J-Q-K-A o abre A-2-3-4-5.</p>`,
-      },
-      {
-        h: 'Manos de 3 cartas (de mayor a menor)',
-        body: `
-          <table class="tut-table ranks">
-            <tr><td>Escalera de color</td><td>${hand('9h Th Jh', '', 'xs')}</td><td>0,22 %</td></tr>
-            <tr><td>Trío</td><td>${hand('Kc Kd Ks', '', 'xs')}</td><td>0,24 %</td></tr>
-            <tr><td>Escalera</td><td>${hand('4c 5d 6s', '', 'xs')}</td><td>3,26 %</td></tr>
-            <tr><td>Color</td><td>${hand('2s 8s Js', '', 'xs')}</td><td>4,96 %</td></tr>
-            <tr><td>Pareja</td><td>${hand('Ac Ad 7s', '', 'xs')}</td><td>16,94 %</td></tr>
-            <tr><td>Carta alta</td><td>${hand('Kh 9d 3c', '', 'xs')}</td><td>74,39 %</td></tr>
-          </table>
-          <p class="small">Recuerda: con 3 cartas la <b>escalera gana al color</b> y el trío gana a la escalera.</p>`,
+          <p class="small">Valen para los dos juegos. Empates: se comparan las cartas de más valor del grupo (el trío del full, la pareja mayor…) y después las sueltas. El As cierra 10-J-Q-K-A o abre A-2-3-4-5.</p>`,
       },
     ],
   },
@@ -222,18 +177,18 @@ const TUTORIAL = {
         h: 'Monta tu mesa privada',
         body: `
           <ol class="tut-steps">
-            <li>Escribe tu apodo y elige el juego en la portada.</li>
-            <li>Pulsa <b>🗝️ Crear mesa privada</b>.</li>
+            <li>En el menú, pulsa <b>AMIGOS</b>.</li>
+            <li>Escribe tu apodo, elige el juego y pulsa <b>CREAR MESA PRIVADA</b>.</li>
             <li>Te damos un <b>código de 4 letras</b> y un enlace de invitación.</li>
           </ol>
-          <p class="tip">¿Prefieres practicar antes? <b>Jugar ya</b> te sienta en una mesa con los habituales del local (bots), sin conexión.</p>`,
+          <p class="tip">¿Prefieres practicar antes? <b>JUGAR</b> te sienta en una mesa con los habituales del local (bots), sin conexión.</p>`,
       },
       {
         h: 'Invita a la banda',
         body: `
           <ol class="tut-steps">
             <li>Comparte el código o pulsa <b>🔗 Copiar invitación</b> y mándalo por WhatsApp.</li>
-            <li>Tus amigos abren el enlace (o escriben el código en <b>Entrar</b>) desde el móvil o el ordenador.</li>
+            <li>Tus amigos abren el enlace (o pulsan <b>AMIGOS</b> y escriben el código en <b>ENTRAR</b>) desde el móvil o el ordenador.</li>
             <li>Caben hasta <b>6 por mesa</b>. Si sois pocos, sienta a algún habitual 🤖.</li>
           </ol>`,
       },
@@ -253,7 +208,7 @@ const TUTORIAL = {
   },
 };
 
-const ORDER = ['three', 'draw', 'ranks', 'online'];
+const ORDER = ['holdem', 'draw', 'ranks', 'online'];
 
 export function initTutorial({ onPractice }) {
   const modal = document.getElementById('tutorial');
@@ -262,7 +217,7 @@ export function initTutorial({ onPractice }) {
   const prev = document.getElementById('tut-prev');
   const next = document.getElementById('tut-next');
   const tabs = document.getElementById('tut-tabs');
-  let tab = 'three';
+  let tab = 'holdem';
   let idx = 0;
   let lastFocus = null;
 
@@ -319,8 +274,8 @@ export function initTutorial({ onPractice }) {
     render();
   }
 
-  function open(which = 'three') {
-    tab = TUTORIAL[which] ? which : 'three';
+  function open(which = 'holdem') {
+    tab = TUTORIAL[which] ? which : 'holdem';
     idx = 0;
     lastFocus = document.activeElement;
     modal.hidden = false;

@@ -33,7 +33,7 @@
         <nav class="main-menu" aria-label="Menú">
           <button class="mbtn mbtn-play" data-menu="solo"><span>JUGAR</span></button>
           <button class="mbtn mbtn-friends" data-menu="online"><span>AMIGOS</span></button>
-          <button class="mbtn mbtn-learn" data-open-tutorial="three"><span>TUTORIAL</span></button>
+          <button class="mbtn mbtn-learn" data-open-tutorial="holdem"><span>TUTORIAL</span></button>
           <button class="mbtn mbtn-ranks" data-open-tutorial="ranks"><span>MANOS</span></button>
         </nav>
         <p class="fineprint">Fichas ficticias · aquí sólo se apuesta el orgullo</p>
@@ -53,11 +53,11 @@
           </label>
 
           <div class="mode-pick" role="radiogroup" aria-label="Elige el juego">
-            <button class="mode-card selected" data-mode="three" role="radio" aria-checked="true">
+            <button class="mode-card selected" data-mode="holdem" role="radio" aria-checked="true">
               <span class="mode-badge">PRINCIPAL</span>
-              <span class="mode-title">3 CARTAS</span>
-              <span class="mode-desc">Tú contra la casa. Ante, Pair Plus y nervios de acero.</span>
-              <span class="mode-mini" data-cards="Qh Kh Ah"></span>
+              <span class="mode-title">TEXAS HOLD’EM</span>
+              <span class="mode-desc">Dos cartas tuyas, cinco en la mesa. El póker de los torneos.</span>
+              <span class="mode-mini" data-cards="As Ah"></span>
             </button>
             <button class="mode-card" data-mode="draw" role="radio" aria-checked="false">
               <span class="mode-badge alt">CLÁSICO</span>
@@ -102,7 +102,7 @@
 
           <h3 class="section-title">Juego</h3>
           <div class="mode-toggle" id="lobby-modes">
-            <button data-mode="three">Póker de 3 Cartas <em>principal</em></button>
+            <button data-mode="holdem">Texas Hold’em <em>principal</em></button>
             <button data-mode="draw">Póker de 5 Cartas <em>clásico</em></button>
           </div>
 
@@ -116,7 +116,7 @@
           <p class="lobby-wait" id="lobby-wait" hidden></p>
           <div class="lobby-foot">
             <button class="link-btn" id="btn-lobby-leave">← Salir del local</button>
-            <button class="link-btn" data-open-tutorial="three">📖 Tutorial</button>
+            <button class="link-btn" data-open-tutorial="holdem">📖 Tutorial</button>
           </div>
         </div>
         <div class="panel lobby-chat">
@@ -163,30 +163,16 @@
         <div class="table-wrap">
           <div class="table" id="table">
             <div class="felt">
-              <svg class="felt-arc" viewBox="0 0 400 70" aria-hidden="true">
-                <path id="arcPath" d="M 10 12 Q 200 92 390 12" fill="none"/>
-                <text><textPath href="#arcPath" startOffset="50%" text-anchor="middle" id="felt-arc-text">EL CRUPIER CALIFICA CON REINA O MEJOR</textPath></text>
-              </svg>
               <div class="felt-paytable" id="felt-paytable"></div>
 
-              <!-- Póker de 3 cartas -->
-              <div class="shoe" id="shoe" aria-hidden="true"></div>
-              <div class="dealer-zone" id="dealer-zone">
-                <div class="dealer-label">Crupier</div>
-                <div class="cards-row dealer-cards" id="dealer-cards"></div>
-                <div class="dealer-hand" id="dealer-hand"></div>
-              </div>
-              <div class="bet-spots" id="bet-spots">
-                <button class="spot spot-pp" data-spot="pp"><span class="spot-name">PAIR<br>PLUS</span><span class="spot-chips"></span></button>
-                <button class="spot spot-ante" data-spot="ante"><span class="spot-name">ANTE</span><span class="spot-chips"></span></button>
-                <div class="spot spot-play" data-spot="play"><span class="spot-name">PLAY</span><span class="spot-chips"></span></div>
-              </div>
-
-              <!-- Póker de 5 cartas -->
+              <!-- Centro: fase, cartas comunes (Hold'em) y bote -->
               <div class="pot-zone" id="pot-zone">
                 <div class="phase-label" id="phase-label"></div>
-                <div class="pot-chips" id="pot-chips"></div>
-                <div class="pot-amount" id="pot-amount"></div>
+                <div class="cards-row board" id="board" aria-label="Cartas comunes"></div>
+                <div class="pot-line">
+                  <div class="pot-chips" id="pot-chips"></div>
+                  <div class="pot-amount" id="pot-amount"></div>
+                </div>
                 <div class="pot-result" id="pot-result"></div>
               </div>
             </div>
@@ -224,7 +210,7 @@
         <button class="icon-btn" data-close-modal title="Cerrar">✕</button>
       </header>
       <nav class="tut-tabs" id="tut-tabs">
-        <button data-tut="three">3 Cartas</button>
+        <button data-tut="holdem">Hold’em</button>
         <button data-tut="draw">5 Cartas</button>
         <button data-tut="ranks">Ranking</button>
         <button data-tut="online">Con amigos</button>
